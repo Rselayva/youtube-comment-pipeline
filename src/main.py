@@ -5,9 +5,21 @@ VIDEO_ID = "aFrQIJ5cbRc"
 
 
 def main():
-    comments = get_comments(VIDEO_ID)
+    first_page = get_comments(VIDEO_ID)
 
-    print(comments)
+    print("First page:")
+    print(len(first_page["items"]))
+
+    next_page_token = first_page.get("nextPageToken")
+
+    if next_page_token:
+        second_page = get_comments(
+            VIDEO_ID,
+            page_token=next_page_token,
+        )
+
+        print("Second page:")
+        print(len(second_page["items"]))
 
 
 if __name__ == "__main__":
