@@ -14,6 +14,7 @@ BASE_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_REQUEST_ATTEMPTS = 3
 INITIAL_BACKOFF_SECONDS = 1
+RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 
 
 def get_comments(
@@ -42,14 +43,26 @@ def get_comments(
                 params=params,
                 timeout=REQUEST_TIMEOUT_SECONDS,
             )
+            response.raise_for_status()
             break
-        except requests.Timeout:
+        except (
+            requests.Timeout,
+            requests.ConnectionError,
+            requests.HTTPError,
+        ) as error:
+            if isinstance(error, requests.HTTPError):
+                status_code = (
+                    error.response.status_code
+                    if error.response is not None
+                    else None
+                )
+                if status_code not in RETRYABLE_STATUS_CODES:
+                    raise
+
             if attempt == MAX_REQUEST_ATTEMPTS - 1:
                 raise
 
             backoff_seconds = INITIAL_BACKOFF_SECONDS * (2**attempt)
             time.sleep(backoff_seconds)
-
-    response.raise_for_status()
 
     return response.json()
