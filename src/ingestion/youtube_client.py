@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -7,6 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
@@ -63,6 +66,15 @@ def get_comments(
                 raise
 
             backoff_seconds = INITIAL_BACKOFF_SECONDS * (2**attempt)
+            logger.warning(
+                "YouTube API request failed for video_id=%s with %s; "
+                "attempt %s/%s, retrying in %s seconds",
+                video_id,
+                type(error).__name__,
+                attempt + 1,
+                MAX_REQUEST_ATTEMPTS,
+                backoff_seconds,
+            )
             time.sleep(backoff_seconds)
 
     return response.json()

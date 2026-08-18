@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -144,3 +145,26 @@ def test_get_comments_does_not_retry_after_client_error(
     assert raised_error.value is http_error
     mock_get.assert_called_once()
     mock_sleep.assert_not_called()
+
+
+@patch("src.ingestion.youtube_client.time.sleep")
+@patch("src.ingestion.youtube_client.requests.get")
+def test_get_comments_logs_retry_details(
+    mock_get: Mock,
+    mock_sleep: Mock,
+    caplog: pytest.LogCaptureFixture,
+):
+    mock_response = Mock()
+    mock_response.json.return_value = {"items": []}
+    mock_get.side_effect = [requests.Timeout, mock_response]
+
+    with caplog.at_level(logging.WARNING, logger="src.ingestion.youtube_client"):
+        with patch("src.ingestion.youtube_client.API_KEY", "test-api-key"):
+            get_comments(video_id="test-video-id")
+
+    assert len(caplog.records) == 1
+    log_message = caplog.records[0].getMessage()
+    assert "video_id=test-video-id" in log_message
+    assert "Timeout" in log_message
+    assert "attempt 1/3" in log_message
+    assert "retrying in 1 seconds" in log_message
