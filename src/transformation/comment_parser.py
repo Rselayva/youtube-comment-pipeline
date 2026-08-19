@@ -1,3 +1,17 @@
+from datetime import datetime, timezone
+
+
+def parse_utc_timestamp(timestamp: str) -> datetime:
+    parsed_timestamp = datetime.fromisoformat(
+        timestamp.replace("Z", "+00:00")
+    )
+
+    if parsed_timestamp.tzinfo is None:
+        raise ValueError("Timestamp must include timezone information")
+
+    return parsed_timestamp.astimezone(timezone.utc)
+
+
 def parse_top_level_comment(
     comment_thread: dict,
     ingested_at: str,
@@ -13,9 +27,9 @@ def parse_top_level_comment(
         "comment_text": comment_snippet["textOriginal"],
         "like_count": comment_snippet["likeCount"],
         "total_reply_count": thread_snippet["totalReplyCount"],
-        "published_at": comment_snippet["publishedAt"],
-        "updated_at": comment_snippet["updatedAt"],
-        "ingested_at": ingested_at,
+        "published_at": parse_utc_timestamp(comment_snippet["publishedAt"]),
+        "updated_at": parse_utc_timestamp(comment_snippet["updatedAt"]),
+        "ingested_at": parse_utc_timestamp(ingested_at),
     }
 
 

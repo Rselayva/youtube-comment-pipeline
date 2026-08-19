@@ -1,8 +1,12 @@
+from datetime import datetime, timezone
 from unittest.mock import call, patch
+
+import pytest
 
 from transformation.comment_parser import (
     parse_comment_page,
     parse_top_level_comment,
+    parse_utc_timestamp,
 )
 
 
@@ -38,9 +42,9 @@ def test_parse_top_level_comment_flattens_youtube_thread():
         "comment_text": "Original comment text",
         "like_count": 12,
         "total_reply_count": 3,
-        "published_at": "2026-08-18T09:00:00Z",
-        "updated_at": "2026-08-18T10:00:00Z",
-        "ingested_at": "2026-08-19T08:00:00+00:00",
+        "published_at": datetime(2026, 8, 18, 9, 0, tzinfo=timezone.utc),
+        "updated_at": datetime(2026, 8, 18, 10, 0, tzinfo=timezone.utc),
+        "ingested_at": datetime(2026, 8, 19, 8, 0, tzinfo=timezone.utc),
     }
 
 
@@ -74,3 +78,24 @@ def test_parse_comment_page_parses_every_thread(mock_parse_top_level_comment):
             ingested_at="2026-08-19T08:00:00+00:00",
         ),
     ]
+
+
+def test_parse_utc_timestamp_converts_offset_to_utc():
+    parsed_timestamp = parse_utc_timestamp("2026-08-19T16:00:00+08:00")
+
+    assert parsed_timestamp == datetime(
+        2026,
+        8,
+        19,
+        8,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+
+def test_parse_utc_timestamp_rejects_missing_timezone():
+    with pytest.raises(
+        ValueError,
+        match="Timestamp must include timezone information",
+    ):
+        parse_utc_timestamp("2026-08-19T08:00:00")
