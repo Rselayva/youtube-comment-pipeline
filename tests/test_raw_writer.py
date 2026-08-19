@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from src.storage.raw_writer import write_raw_comment_page
+from storage.raw_writer import write_raw_comment_page
 
 
 def test_write_raw_comment_page_preserves_response_and_metadata(tmp_path):
