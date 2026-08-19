@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from validation.comment_validator import validate_comment_record
+from validation.comment_validator import (
+    validate_comment_dataset,
+    validate_comment_record,
+)
 
 
 VALID_COMMENT = {
@@ -125,3 +128,72 @@ def test_validate_comment_record_rejects_invalid_timestamp_order(
     validation_errors = validate_comment_record(comment)
 
     assert validation_errors == [expected_error]
+
+
+def test_validate_comment_dataset_splits_valid_and_invalid_records():
+    valid_comment = VALID_COMMENT.copy()
+    invalid_comment = VALID_COMMENT.copy()
+    invalid_comment["comment_id"] = "comment-2"
+    invalid_comment["like_count"] = -1
+
+    valid_records, rejected_records = validate_comment_dataset(
+        [valid_comment, invalid_comment]
+    )
+
+    assert valid_records == [valid_comment]
+    assert rejected_records == [
+        {
+            **invalid_comment,
+            "validation_errors": ["like_count must be non-negative"],
+        }
+    ]
+
+
+def test_validate_comment_dataset_rejects_all_duplicate_comment_ids():
+    first_duplicate = VALID_COMMENT.copy()
+    second_duplicate = VALID_COMMENT.copy()
+    second_duplicate["comment_text"] = "Updated test comment"
+
+    valid_records, rejected_records = validate_comment_dataset(
+        [first_duplicate, second_duplicate]
+    )
+
+    assert valid_records == []
+    assert rejected_records == [
+        {
+            **first_duplicate,
+            "validation_errors": [
+                "comment_id must be unique within the batch"
+            ],
+        },
+        {
+            **second_duplicate,
+            "validation_errors": [
+                "comment_id must be unique within the batch"
+            ],
+        },
+    ]
+
+
+def test_validate_comment_dataset_combines_record_and_duplicate_errors():
+    first_duplicate = VALID_COMMENT.copy()
+    first_duplicate["like_count"] = -1
+    second_duplicate = VALID_COMMENT.copy()
+
+    _, rejected_records = validate_comment_dataset(
+        [first_duplicate, second_duplicate]
+    )
+
+    assert rejected_records[0]["validation_errors"] == [
+        "like_count must be non-negative",
+        "comment_id must be unique within the batch",
+    ]
+
+
+def test_validate_comment_dataset_does_not_mutate_input_records():
+    invalid_comment = VALID_COMMENT.copy()
+    invalid_comment["comment_id"] = None
+
+    validate_comment_dataset([invalid_comment])
+
+    assert "validation_errors" not in invalid_comment

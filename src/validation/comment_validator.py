@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import datetime
 
 
@@ -74,3 +75,37 @@ def validate_comment_record(comment: dict) -> list[str]:
             )
 
     return validation_errors
+
+
+def validate_comment_dataset(
+    comments: list[dict],
+) -> tuple[list[dict], list[dict]]:
+    comment_id_counts = Counter(
+        comment["comment_id"]
+        for comment in comments
+        if comment.get("comment_id") is not None
+    )
+
+    valid_records = []
+    rejected_records = []
+
+    for comment in comments:
+        validation_errors = validate_comment_record(comment)
+        comment_id = comment.get("comment_id")
+
+        if (
+            comment_id is not None
+            and comment_id_counts[comment_id] > 1
+        ):
+            validation_errors.append(
+                "comment_id must be unique within the batch"
+            )
+
+        if validation_errors:
+            rejected_record = comment.copy()
+            rejected_record["validation_errors"] = validation_errors
+            rejected_records.append(rejected_record)
+        else:
+            valid_records.append(comment)
+
+    return valid_records, rejected_records
