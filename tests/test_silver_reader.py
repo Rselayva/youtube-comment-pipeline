@@ -3,7 +3,51 @@ from datetime import datetime, timezone
 
 import pytest
 
-from storage.silver_reader import read_silver_comments
+from storage.silver_reader import (
+    list_silver_comment_files,
+    read_silver_comments,
+)
+
+
+def test_list_silver_comment_files_returns_sorted_video_files(tmp_path):
+    video_dir = tmp_path / "video-1"
+    first_path = (
+        video_dir
+        / "2026-08-19"
+        / "20260819T093000000000Z_comments.jsonl"
+    )
+    second_path = (
+        video_dir
+        / "2026-08-20"
+        / "20260820T093000000000Z_comments.jsonl"
+    )
+    ignored_path = video_dir / "2026-08-20" / "notes.json"
+    other_video_path = (
+        tmp_path
+        / "video-2"
+        / "2026-08-20"
+        / "20260820T093000000000Z_comments.jsonl"
+    )
+
+    for path in (second_path, first_path, ignored_path, other_video_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("", encoding="utf-8")
+
+    paths = list_silver_comment_files(
+        video_id="video-1",
+        base_dir=tmp_path,
+    )
+
+    assert paths == [first_path, second_path]
+
+
+def test_list_silver_comment_files_returns_empty_for_first_load(tmp_path):
+    paths = list_silver_comment_files(
+        video_id="video-without-silver-data",
+        base_dir=tmp_path,
+    )
+
+    assert paths == []
 
 
 def test_read_silver_comments_preserves_file_and_line_order(tmp_path):

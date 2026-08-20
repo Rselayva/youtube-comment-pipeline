@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from storage.silver_writer import DEFAULT_SILVER_COMMENTS_DIR
 from transformation.comment_parser import parse_utc_timestamp
 
 
@@ -9,6 +10,18 @@ TIMESTAMP_FIELDS = (
     "updated_at",
     "ingested_at",
 )
+
+
+def list_silver_comment_files(
+    video_id: str,
+    base_dir: Path = DEFAULT_SILVER_COMMENTS_DIR,
+) -> list[Path]:
+    video_dir = base_dir / video_id
+
+    if not video_dir.exists():
+        return []
+
+    return sorted(video_dir.glob("*/*_comments.jsonl"))
 
 
 def deserialize_silver_comment(serialized_comment: dict) -> dict:
