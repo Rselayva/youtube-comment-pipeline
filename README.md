@@ -41,10 +41,12 @@ Run the pipeline with a video ID or supported YouTube URL:
 ```bash
 python src/main.py aFrQIJ5cbRc
 python src/main.py "https://www.youtube.com/watch?v=aFrQIJ5cbRc"
+python src/main.py aFrQIJ5cbRc --max-pages 10
 ```
 
 Supported URL formats include `youtube.com/watch`, `youtu.be`,
 `youtube.com/shorts`, `youtube.com/live`, and `youtube.com/embed`.
+`--max-pages` defaults to 2 and accepts values from 1 to 100.
 
 ## Project Status
 

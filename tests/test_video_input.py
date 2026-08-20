@@ -1,6 +1,11 @@
 import pytest
 
-from video_input import extract_video_id, parse_cli_video_id
+from video_input import (
+    DEFAULT_MAX_PAGES,
+    PipelineArguments,
+    extract_video_id,
+    parse_cli_args,
+)
 
 
 VIDEO_ID = "aFrQIJ5cbRc"
@@ -47,16 +52,36 @@ def test_extract_video_id_rejects_invalid_inputs(value, expected_error):
         extract_video_id(value)
 
 
-def test_parse_cli_video_id_returns_normalized_id():
-    video_id = parse_cli_video_id(
+def test_parse_cli_args_returns_normalized_id_and_default_max_pages():
+    args = parse_cli_args(
         [f"https://www.youtube.com/watch?v={VIDEO_ID}"]
     )
 
-    assert video_id == VIDEO_ID
+    assert args == PipelineArguments(
+        video_id=VIDEO_ID,
+        max_pages=DEFAULT_MAX_PAGES,
+    )
 
 
-def test_parse_cli_video_id_exits_before_pipeline_for_invalid_input():
+def test_parse_cli_args_accepts_custom_max_pages():
+    args = parse_cli_args([VIDEO_ID, "--max-pages", "25"])
+
+    assert args == PipelineArguments(
+        video_id=VIDEO_ID,
+        max_pages=25,
+    )
+
+
+def test_parse_cli_args_exits_before_pipeline_for_invalid_video():
     with pytest.raises(SystemExit) as error:
-        parse_cli_video_id(["invalid"])
+        parse_cli_args(["invalid"])
+
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "101", "not-an-integer"])
+def test_parse_cli_args_rejects_invalid_max_pages(value):
+    with pytest.raises(SystemExit) as error:
+        parse_cli_args([VIDEO_ID, "--max-pages", value])
 
     assert error.value.code == 2

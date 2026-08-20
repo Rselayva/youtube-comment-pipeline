@@ -5,9 +5,11 @@ from unittest.mock import ANY, patch
 import pytest
 
 import main as pipeline_main
+from video_input import PipelineArguments
 
 
 VIDEO_ID = "aFrQIJ5cbRc"
+MAX_PAGES = 2
 
 
 @patch("main.process_comment_pages")
@@ -35,11 +37,11 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     }
 
     with caplog.at_level(logging.INFO):
-        pipeline_main.main(VIDEO_ID)
+        pipeline_main.main(VIDEO_ID, MAX_PAGES)
 
     mock_ingest_comment_pages.assert_called_once_with(
         video_id=VIDEO_ID,
-        max_pages=pipeline_main.MAX_PAGES,
+        max_pages=MAX_PAGES,
         ingested_at=ANY,
     )
     mock_read_raw_comment_pages.assert_called_once_with(raw_paths)
@@ -69,7 +71,7 @@ def test_main_logs_and_reraises_downstream_failure(
 
     with caplog.at_level(logging.ERROR):
         with pytest.raises(ValueError, match="invalid raw document"):
-            pipeline_main.main(VIDEO_ID)
+            pipeline_main.main(VIDEO_ID, MAX_PAGES)
 
     mock_process_comment_pages.assert_not_called()
     assert "pipeline_failed" in caplog.text
@@ -77,17 +79,23 @@ def test_main_logs_and_reraises_downstream_failure(
 
 
 @patch("main.main")
-@patch("main.parse_cli_video_id")
+@patch("main.parse_cli_args")
 @patch("main.configure_logging")
 def test_run_cli_configures_logging_parses_input_and_runs_pipeline(
     mock_configure_logging,
-    mock_parse_cli_video_id,
+    mock_parse_cli_args,
     mock_main,
 ):
-    mock_parse_cli_video_id.return_value = VIDEO_ID
+    mock_parse_cli_args.return_value = PipelineArguments(
+        video_id=VIDEO_ID,
+        max_pages=5,
+    )
 
     pipeline_main.run_cli()
 
     mock_configure_logging.assert_called_once_with()
-    mock_parse_cli_video_id.assert_called_once_with()
-    mock_main.assert_called_once_with(VIDEO_ID)
+    mock_parse_cli_args.assert_called_once_with()
+    mock_main.assert_called_once_with(
+        video_id=VIDEO_ID,
+        max_pages=5,
+    )

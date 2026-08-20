@@ -1,5 +1,6 @@
 import argparse
 import re
+from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
 
@@ -15,6 +16,14 @@ PATH_VIDEO_TYPES = {
     "live",
     "shorts",
 }
+DEFAULT_MAX_PAGES = 2
+MAX_ALLOWED_PAGES = 100
+
+
+@dataclass(frozen=True)
+class PipelineArguments:
+    video_id: str
+    max_pages: int
 
 
 def extract_video_id(value: str) -> str:
@@ -48,7 +57,25 @@ def extract_video_id(value: str) -> str:
     raise ValueError("YouTube URL does not contain a valid video ID")
 
 
-def parse_cli_video_id(argv: list[str] | None = None) -> str:
+def parse_max_pages(value: str) -> int:
+    try:
+        max_pages = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "max pages must be an integer"
+        ) from error
+
+    if not 1 <= max_pages <= MAX_ALLOWED_PAGES:
+        raise argparse.ArgumentTypeError(
+            f"max pages must be between 1 and {MAX_ALLOWED_PAGES}"
+        )
+
+    return max_pages
+
+
+def parse_cli_args(
+    argv: list[str] | None = None,
+) -> PipelineArguments:
     parser = argparse.ArgumentParser(
         description="Ingest and transform comments for one YouTube video.",
     )
@@ -57,9 +84,23 @@ def parse_cli_video_id(argv: list[str] | None = None) -> str:
         metavar="VIDEO",
         help="YouTube video ID or URL",
     )
+    parser.add_argument(
+        "--max-pages",
+        type=parse_max_pages,
+        default=DEFAULT_MAX_PAGES,
+        help=(
+            "maximum comment pages to fetch "
+            f"(default: {DEFAULT_MAX_PAGES}, max: {MAX_ALLOWED_PAGES})"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
-        return extract_video_id(args.video)
+        video_id = extract_video_id(args.video)
     except ValueError as error:
         parser.error(str(error))
+
+    return PipelineArguments(
+        video_id=video_id,
+        max_pages=args.max_pages,
+    )

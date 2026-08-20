@@ -5,10 +5,9 @@ from datetime import datetime, timezone
 from ingestion.pipeline import ingest_comment_pages
 from storage.raw_reader import read_raw_comment_pages
 from transformation.pipeline import process_comment_pages
-from video_input import parse_cli_video_id
+from video_input import parse_cli_args
 
 
-MAX_PAGES = 2
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 logger = logging.getLogger(__name__)
@@ -21,7 +20,7 @@ def configure_logging():
     )
 
 
-def main(video_id: str):
+def main(video_id: str, max_pages: int):
     start_time = time.perf_counter()
     ingested_at = datetime.now(timezone.utc)
     logger.info("pipeline_start video_id=%s", video_id)
@@ -29,7 +28,7 @@ def main(video_id: str):
     try:
         raw_output_paths = ingest_comment_pages(
             video_id=video_id,
-            max_pages=MAX_PAGES,
+            max_pages=max_pages,
             ingested_at=ingested_at,
         )
         raw_documents = read_raw_comment_pages(raw_output_paths)
@@ -71,8 +70,11 @@ def main(video_id: str):
 
 def run_cli():
     configure_logging()
-    video_id = parse_cli_video_id()
-    main(video_id)
+    args = parse_cli_args()
+    main(
+        video_id=args.video_id,
+        max_pages=args.max_pages,
+    )
 
 
 if __name__ == "__main__":
