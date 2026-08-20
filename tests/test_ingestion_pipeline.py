@@ -18,13 +18,13 @@ def test_ingest_comment_pages_stops_when_there_is_no_next_page(
     mock_get_comments.return_value = page
     mock_write_raw_comment_page.return_value = Path("page_0001.json")
 
-    pages_fetched = ingest_comment_pages(
+    raw_output_paths = ingest_comment_pages(
         video_id="test-video-id",
         max_pages=5,
         ingested_at=INGESTED_AT,
     )
 
-    assert pages_fetched == 1
+    assert raw_output_paths == [Path("page_0001.json")]
     mock_get_comments.assert_called_once_with(
         "test-video-id",
         page_token=None,
@@ -57,13 +57,16 @@ def test_ingest_comment_pages_stops_at_max_pages(
         Path("page_0002.json"),
     ]
 
-    pages_fetched = ingest_comment_pages(
+    raw_output_paths = ingest_comment_pages(
         video_id="test-video-id",
         max_pages=2,
         ingested_at=INGESTED_AT,
     )
 
-    assert pages_fetched == 2
+    assert raw_output_paths == [
+        Path("page_0001.json"),
+        Path("page_0002.json"),
+    ]
     assert mock_get_comments.call_args_list == [
         call("test-video-id", page_token=None),
         call("test-video-id", page_token="page-2-token"),

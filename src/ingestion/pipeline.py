@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from ingestion.youtube_client import get_comments
 from storage.raw_writer import write_raw_comment_page
@@ -12,8 +13,9 @@ def ingest_comment_pages(
     video_id: str,
     max_pages: int,
     ingested_at: datetime,
-) -> int:
+) -> list[Path]:
     page_token = None
+    raw_output_paths = []
 
     for page_number in range(1, max_pages + 1):
         page = get_comments(
@@ -41,6 +43,7 @@ def ingest_comment_pages(
             page_number,
             output_path,
         )
+        raw_output_paths.append(output_path)
 
         page_token = page.get("nextPageToken")
         if not page_token:
@@ -50,7 +53,7 @@ def ingest_comment_pages(
                 video_id,
                 page_number,
             )
-            return page_number
+            return raw_output_paths
 
     logger.info(
         "pagination_complete video_id=%s pages_fetched=%s "
@@ -58,4 +61,4 @@ def ingest_comment_pages(
         video_id,
         max_pages,
     )
-    return max_pages
+    return raw_output_paths
