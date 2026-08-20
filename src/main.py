@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from ingestion.pipeline import ingest_comment_pages
 from storage.raw_reader import read_raw_comment_pages
 from transformation.pipeline import process_comment_pages
+from video_input import parse_cli_video_id
 
 
-VIDEO_ID = "aFrQIJ5cbRc"
 MAX_PAGES = 2
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
@@ -21,14 +21,14 @@ def configure_logging():
     )
 
 
-def main():
+def main(video_id: str):
     start_time = time.perf_counter()
     ingested_at = datetime.now(timezone.utc)
-    logger.info("pipeline_start video_id=%s", VIDEO_ID)
+    logger.info("pipeline_start video_id=%s", video_id)
 
     try:
         raw_output_paths = ingest_comment_pages(
-            video_id=VIDEO_ID,
+            video_id=video_id,
             max_pages=MAX_PAGES,
             ingested_at=ingested_at,
         )
@@ -40,7 +40,7 @@ def main():
             "existing_silver_records=%s merged_silver_records=%s "
             "silver_records_written=%s "
             "silver_output_path=%s rejected_output_path=%s",
-            VIDEO_ID,
+            video_id,
             transformation_result["records_parsed"],
             transformation_result["valid_records"],
             transformation_result["rejected_records"],
@@ -55,7 +55,7 @@ def main():
         logger.exception(
             "pipeline_failed video_id=%s error_type=%s "
             "execution_time_seconds=%.3f",
-            VIDEO_ID,
+            video_id,
             type(error).__name__,
             execution_time_seconds,
         )
@@ -64,11 +64,16 @@ def main():
         execution_time_seconds = time.perf_counter() - start_time
         logger.info(
             "pipeline_end video_id=%s execution_time_seconds=%.3f",
-            VIDEO_ID,
+            video_id,
             execution_time_seconds,
         )
 
 
-if __name__ == "__main__":
+def run_cli():
     configure_logging()
-    main()
+    video_id = parse_cli_video_id()
+    main(video_id)
+
+
+if __name__ == "__main__":
+    run_cli()

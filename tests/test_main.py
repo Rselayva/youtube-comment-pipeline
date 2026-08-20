@@ -7,6 +7,9 @@ import pytest
 import main as pipeline_main
 
 
+VIDEO_ID = "aFrQIJ5cbRc"
+
+
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
@@ -32,10 +35,10 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     }
 
     with caplog.at_level(logging.INFO):
-        pipeline_main.main()
+        pipeline_main.main(VIDEO_ID)
 
     mock_ingest_comment_pages.assert_called_once_with(
-        video_id=pipeline_main.VIDEO_ID,
+        video_id=VIDEO_ID,
         max_pages=pipeline_main.MAX_PAGES,
         ingested_at=ANY,
     )
@@ -66,8 +69,25 @@ def test_main_logs_and_reraises_downstream_failure(
 
     with caplog.at_level(logging.ERROR):
         with pytest.raises(ValueError, match="invalid raw document"):
-            pipeline_main.main()
+            pipeline_main.main(VIDEO_ID)
 
     mock_process_comment_pages.assert_not_called()
     assert "pipeline_failed" in caplog.text
     assert "error_type=ValueError" in caplog.text
+
+
+@patch("main.main")
+@patch("main.parse_cli_video_id")
+@patch("main.configure_logging")
+def test_run_cli_configures_logging_parses_input_and_runs_pipeline(
+    mock_configure_logging,
+    mock_parse_cli_video_id,
+    mock_main,
+):
+    mock_parse_cli_video_id.return_value = VIDEO_ID
+
+    pipeline_main.run_cli()
+
+    mock_configure_logging.assert_called_once_with()
+    mock_parse_cli_video_id.assert_called_once_with()
+    mock_main.assert_called_once_with(VIDEO_ID)
