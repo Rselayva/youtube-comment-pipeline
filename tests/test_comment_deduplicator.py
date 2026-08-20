@@ -53,6 +53,25 @@ def test_select_latest_comment_versions_uses_ingestion_time_as_tiebreaker():
     assert selected_comments == [later_ingestion]
 
 
+def test_select_latest_comment_versions_skips_identical_reingestion():
+    earlier_ingestion = BASE_COMMENT.copy()
+    later_ingestion = BASE_COMMENT.copy()
+    later_ingestion["ingested_at"] = datetime(
+        2026,
+        8,
+        20,
+        9,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    selected_comments = select_latest_comment_versions(
+        [earlier_ingestion, later_ingestion]
+    )
+
+    assert selected_comments == [earlier_ingestion]
+
+
 def test_select_latest_comment_versions_normalizes_timezone_comparison():
     utc_comment = BASE_COMMENT.copy()
     offset_comment = BASE_COMMENT.copy()

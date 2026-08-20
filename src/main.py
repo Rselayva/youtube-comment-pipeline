@@ -37,11 +37,16 @@ def main():
         logger.info(
             "transformation_complete video_id=%s records_parsed=%s "
             "valid_records=%s rejected_records=%s "
+            "existing_silver_records=%s merged_silver_records=%s "
+            "silver_records_written=%s "
             "silver_output_path=%s rejected_output_path=%s",
             VIDEO_ID,
             transformation_result["records_parsed"],
             transformation_result["valid_records"],
             transformation_result["rejected_records"],
+            transformation_result["existing_silver_records"],
+            transformation_result["merged_silver_records"],
+            transformation_result["silver_records_written"],
             transformation_result["silver_output_path"],
             transformation_result["rejected_output_path"],
         )

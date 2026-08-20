@@ -12,6 +12,7 @@ from transformation.comment_parser import (
     parse_comment_page,
     parse_utc_timestamp,
 )
+from transformation.incremental import prepare_incremental_comments
 from validation.comment_validator import validate_comment_dataset
 
 
@@ -45,10 +46,23 @@ def process_comment_pages(
         parsed_comments
     )
 
-    silver_output_path = None
+    incremental_result = {
+        "existing_records": 0,
+        "merged_records": 0,
+        "records_to_write": [],
+    }
     if valid_records:
+        incremental_result = prepare_incremental_comments(
+            incoming_comments=valid_records,
+            video_id=video_id,
+            silver_base_dir=silver_base_dir,
+        )
+
+    records_to_write = incremental_result["records_to_write"]
+    silver_output_path = None
+    if records_to_write:
         silver_output_path = write_silver_comments(
-            comments=valid_records,
+            comments=records_to_write,
             video_id=video_id,
             ingested_at=ingested_at,
             base_dir=silver_base_dir,
@@ -67,6 +81,11 @@ def process_comment_pages(
         "records_parsed": len(parsed_comments),
         "valid_records": len(valid_records),
         "rejected_records": len(rejected_records),
+        "existing_silver_records": incremental_result[
+            "existing_records"
+        ],
+        "merged_silver_records": incremental_result["merged_records"],
+        "silver_records_written": len(records_to_write),
         "silver_output_path": silver_output_path,
         "rejected_output_path": rejected_output_path,
     }

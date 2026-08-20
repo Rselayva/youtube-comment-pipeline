@@ -25,11 +25,13 @@ RAW_DOCUMENTS = [
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.prepare_incremental_comments")
 @patch("transformation.pipeline.validate_comment_dataset")
 @patch("transformation.pipeline.parse_comment_page")
 def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     mock_parse_comment_page,
     mock_validate_comment_dataset,
+    mock_prepare_incremental_comments,
     mock_write_silver_comments,
     mock_write_rejected_comments,
     tmp_path,
@@ -48,6 +50,11 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         [first_comment],
         [rejected_comment],
     )
+    mock_prepare_incremental_comments.return_value = {
+        "existing_records": 3,
+        "merged_records": 4,
+        "records_to_write": [first_comment],
+    }
     mock_write_silver_comments.return_value = Path("silver.jsonl")
     mock_write_rejected_comments.return_value = Path("rejected.jsonl")
 
@@ -63,6 +70,11 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     ]
     mock_validate_comment_dataset.assert_called_once_with(
         [first_comment, second_comment]
+    )
+    mock_prepare_incremental_comments.assert_called_once_with(
+        incoming_comments=[first_comment],
+        video_id="video-1",
+        silver_base_dir=tmp_path / "silver",
     )
     mock_write_silver_comments.assert_called_once_with(
         comments=[first_comment],
@@ -94,6 +106,9 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         "records_parsed": 2,
         "valid_records": 1,
         "rejected_records": 1,
+        "existing_silver_records": 3,
+        "merged_silver_records": 4,
+        "silver_records_written": 1,
         "silver_output_path": Path("silver.jsonl"),
         "rejected_output_path": Path("rejected.jsonl"),
     }
@@ -101,11 +116,13 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.prepare_incremental_comments")
 @patch("transformation.pipeline.validate_comment_dataset")
 @patch("transformation.pipeline.parse_comment_page")
 def test_process_comment_pages_skips_empty_output_datasets(
     mock_parse_comment_page,
     mock_validate_comment_dataset,
+    mock_prepare_incremental_comments,
     mock_write_silver_comments,
     mock_write_rejected_comments,
 ):
@@ -116,8 +133,39 @@ def test_process_comment_pages_skips_empty_output_datasets(
 
     mock_write_silver_comments.assert_not_called()
     mock_write_rejected_comments.assert_not_called()
+    mock_prepare_incremental_comments.assert_not_called()
+    assert result["silver_records_written"] == 0
     assert result["silver_output_path"] is None
     assert result["rejected_output_path"] is None
+
+
+@patch("transformation.pipeline.write_rejected_comments")
+@patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.prepare_incremental_comments")
+@patch("transformation.pipeline.validate_comment_dataset")
+@patch("transformation.pipeline.parse_comment_page")
+def test_process_comment_pages_skips_unchanged_silver_records(
+    mock_parse_comment_page,
+    mock_validate_comment_dataset,
+    mock_prepare_incremental_comments,
+    mock_write_silver_comments,
+    mock_write_rejected_comments,
+):
+    unchanged_comment = {"comment_id": "comment-1"}
+    mock_parse_comment_page.return_value = [unchanged_comment]
+    mock_validate_comment_dataset.return_value = ([unchanged_comment], [])
+    mock_prepare_incremental_comments.return_value = {
+        "existing_records": 1,
+        "merged_records": 1,
+        "records_to_write": [],
+    }
+
+    result = process_comment_pages([RAW_DOCUMENTS[0]])
+
+    mock_write_silver_comments.assert_not_called()
+    mock_write_rejected_comments.assert_not_called()
+    assert result["silver_records_written"] == 0
+    assert result["silver_output_path"] is None
 
 
 def test_process_comment_pages_rejects_empty_batch():
@@ -153,3 +201,55 @@ def test_process_comment_pages_rejects_mixed_batch_metadata(
 
     with pytest.raises(ValueError, match=expected_error):
         process_comment_pages(raw_documents)
+
+
+def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
+    tmp_path,
+):
+    raw_document = {
+        "video_id": "video-1",
+        "page_number": 1,
+        "ingested_at": "2026-08-20T09:30:00+00:00",
+        "raw_response": {
+            "items": [
+                {
+                    "snippet": {
+                        "totalReplyCount": 0,
+                        "topLevelComment": {
+                            "id": "comment-1",
+                            "snippet": {
+                                "videoId": "video-1",
+                                "authorDisplayName": "Test Author",
+                                "textOriginal": "Unchanged comment",
+                                "likeCount": 1,
+                                "publishedAt": "2026-08-19T08:00:00Z",
+                                "updatedAt": "2026-08-19T08:00:00Z",
+                            },
+                        },
+                    },
+                }
+            ]
+        },
+    }
+    silver_dir = tmp_path / "silver"
+    rejected_dir = tmp_path / "rejected"
+
+    first_result = process_comment_pages(
+        [raw_document],
+        silver_base_dir=silver_dir,
+        rejected_base_dir=rejected_dir,
+    )
+    reingested_document = raw_document.copy()
+    reingested_document["ingested_at"] = "2026-08-20T10:30:00+00:00"
+    second_result = process_comment_pages(
+        [reingested_document],
+        silver_base_dir=silver_dir,
+        rejected_base_dir=rejected_dir,
+    )
+
+    assert first_result["silver_records_written"] == 1
+    assert first_result["silver_output_path"].exists()
+    assert second_result["existing_silver_records"] == 1
+    assert second_result["silver_records_written"] == 0
+    assert second_result["silver_output_path"] is None
+    assert len(list(silver_dir.rglob("*_comments.jsonl"))) == 1

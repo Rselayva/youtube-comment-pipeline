@@ -1,6 +1,8 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from storage.silver_writer import write_silver_comments
 
 
@@ -86,6 +88,7 @@ def test_write_silver_comments_writes_one_json_record_per_line(tmp_path):
     }
     assert saved_comments[1]["comment_id"] == "comment-2"
     assert saved_comments[1]["author_name"] is None
+    assert list(output_path.parent.iterdir()) == [output_path]
 
 
 def test_write_silver_comments_does_not_mutate_input_records(tmp_path):
@@ -106,3 +109,22 @@ def test_write_silver_comments_does_not_mutate_input_records(tmp_path):
     assert comment["published_at"] is timestamp
     assert comment["updated_at"] is timestamp
     assert comment["ingested_at"] is timestamp
+
+
+def test_write_silver_comments_removes_partial_file_on_failure(tmp_path):
+    timestamp = datetime(2026, 8, 20, 9, 30, tzinfo=timezone.utc)
+    invalid_comment = {
+        "published_at": timestamp,
+        "updated_at": timestamp,
+    }
+
+    with pytest.raises(KeyError, match="ingested_at"):
+        write_silver_comments(
+            comments=[invalid_comment],
+            video_id="video-1",
+            ingested_at=timestamp,
+            base_dir=tmp_path,
+        )
+
+    output_dir = tmp_path / "video-1" / "2026-08-20"
+    assert list(output_dir.iterdir()) == []

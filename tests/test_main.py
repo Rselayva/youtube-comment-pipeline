@@ -24,6 +24,9 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "records_parsed": 2,
         "valid_records": 1,
         "rejected_records": 1,
+        "existing_silver_records": 3,
+        "merged_silver_records": 4,
+        "silver_records_written": 1,
         "silver_output_path": Path("silver.jsonl"),
         "rejected_output_path": Path("rejected.jsonl"),
     }
@@ -42,6 +45,9 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "records_parsed=2" in caplog.text
     assert "valid_records=1" in caplog.text
     assert "rejected_records=1" in caplog.text
+    assert "existing_silver_records=3" in caplog.text
+    assert "merged_silver_records=4" in caplog.text
+    assert "silver_records_written=1" in caplog.text
 
 
 @patch("main.process_comment_pages")

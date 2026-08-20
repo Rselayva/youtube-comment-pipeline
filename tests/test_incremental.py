@@ -75,6 +75,7 @@ def test_prepare_incremental_comments_merges_existing_and_incoming_versions(
         "existing_records": 1,
         "incoming_records": 2,
         "merged_records": 2,
+        "records_to_write": [updated_comment, new_comment],
         "merged_comments": [updated_comment, new_comment],
     }
 
@@ -101,4 +102,69 @@ def test_prepare_incremental_comments_handles_first_load(
 
     mock_read_silver_comments.assert_called_once_with([])
     assert result["existing_records"] == 0
+    assert result["records_to_write"] == [incoming_comment]
     assert result["merged_comments"] == [incoming_comment]
+
+
+@patch("transformation.incremental.read_silver_comments")
+@patch("transformation.incremental.list_silver_comment_files")
+def test_prepare_incremental_comments_skips_same_and_older_versions(
+    mock_list_silver_comment_files,
+    mock_read_silver_comments,
+):
+    existing_comment = make_comment(
+        "comment-1",
+        "Current text",
+        updated_hour=10,
+        ingested_hour=11,
+    )
+    same_version = existing_comment.copy()
+    same_version["comment_text"] = "Conflicting tied text"
+    older_version = make_comment(
+        "comment-1",
+        "Old text",
+        updated_hour=8,
+        ingested_hour=9,
+    )
+    mock_list_silver_comment_files.return_value = [Path("existing.jsonl")]
+    mock_read_silver_comments.return_value = [existing_comment]
+
+    result = prepare_incremental_comments(
+        incoming_comments=[same_version, older_version],
+        video_id="video-1",
+    )
+
+    assert result["records_to_write"] == []
+    assert result["merged_comments"] == [existing_comment]
+
+
+@patch("transformation.incremental.read_silver_comments")
+@patch("transformation.incremental.list_silver_comment_files")
+def test_prepare_incremental_comments_skips_identical_later_reingestion(
+    mock_list_silver_comment_files,
+    mock_read_silver_comments,
+):
+    existing_comment = make_comment(
+        "comment-1",
+        "Unchanged text",
+        updated_hour=10,
+        ingested_hour=11,
+    )
+    reingested_comment = existing_comment.copy()
+    reingested_comment["ingested_at"] = datetime(
+        2026,
+        8,
+        20,
+        12,
+        tzinfo=timezone.utc,
+    )
+    mock_list_silver_comment_files.return_value = [Path("existing.jsonl")]
+    mock_read_silver_comments.return_value = [existing_comment]
+
+    result = prepare_incremental_comments(
+        incoming_comments=[reingested_comment],
+        video_id="video-1",
+    )
+
+    assert result["records_to_write"] == []
+    assert result["merged_comments"] == [existing_comment]

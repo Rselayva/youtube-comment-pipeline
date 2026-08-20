@@ -32,11 +32,21 @@ def write_silver_comments(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = output_dir / f"{ingestion_timestamp}_comments.jsonl"
+    temporary_path = output_dir / f".{output_path.name}.tmp"
 
-    with output_path.open("w", encoding="utf-8") as output_file:
-        for comment in comments:
-            serialized_comment = serialize_comment_record(comment)
-            json.dump(serialized_comment, output_file, ensure_ascii=False)
-            output_file.write("\n")
+    try:
+        with temporary_path.open("w", encoding="utf-8") as output_file:
+            for comment in comments:
+                serialized_comment = serialize_comment_record(comment)
+                json.dump(
+                    serialized_comment,
+                    output_file,
+                    ensure_ascii=False,
+                )
+                output_file.write("\n")
+
+        temporary_path.replace(output_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
     return output_path
