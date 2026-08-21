@@ -121,6 +121,20 @@ snapshot metadata, and agreement between each record's video/dictionary
 version and its output partition. If validation fails, the current Gold
 snapshot is not replaced.
 
+## Run Manifests
+
+After a successful pipeline run, an atomic control manifest is written to:
+
+```text
+data/manifests/youtube/runs/<video_id>/<UTC date>/<run timestamp>_run.json
+```
+
+The versioned manifest records the video ID, CLI parameters, entity and Topic
+dictionary versions, dataset counts, artifact paths, timestamps, and execution
+duration. It does not contain the YouTube API key or comment text. A manifest
+is created only after all Bronze, Silver, and Gold outputs for the run have
+completed successfully.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:

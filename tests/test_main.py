@@ -13,6 +13,7 @@ MAX_PAGES = 2
 PAGE_SIZE = 10
 
 
+@patch("main.write_run_manifest")
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
@@ -22,6 +23,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     mock_ingest_comment_pages,
     mock_read_raw_comment_pages,
     mock_process_comment_pages,
+    mock_write_run_manifest,
     caplog,
 ):
     mock_ingest_video_metadata.return_value = Path("video.json")
@@ -55,6 +57,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "video_topic_metrics_output_path": Path("video_topics.jsonl"),
         "daily_topic_metrics_output_path": Path("daily_topics.jsonl"),
     }
+    mock_write_run_manifest.return_value = Path("run.json")
 
     with caplog.at_level(logging.INFO):
         pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
@@ -78,6 +81,29 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     )
     mock_read_raw_comment_pages.assert_called_once_with(raw_paths)
     mock_process_comment_pages.assert_called_once_with(raw_documents)
+    mock_write_run_manifest.assert_called_once()
+    run_manifest = mock_write_run_manifest.call_args.args[0]
+    assert run_manifest["schema_version"] == 1
+    assert run_manifest["status"] == "succeeded"
+    assert run_manifest["video_id"] == VIDEO_ID
+    assert run_manifest["parameters"] == {
+        "max_pages": MAX_PAGES,
+        "page_size": PAGE_SIZE,
+    }
+    assert run_manifest["dictionary_versions"] == {
+        "entity": "nmixx_v2",
+        "topic": "comment_topics_v1",
+    }
+    assert run_manifest["counts"]["raw_comment_pages"] == 2
+    assert run_manifest["counts"]["entity_mention_records"] == 2
+    assert run_manifest["counts"]["video_topic_metrics_records"] == 3
+    assert run_manifest["artifacts"]["raw_video_metadata"] == Path(
+        "video.json"
+    )
+    assert run_manifest["artifacts"]["raw_comment_pages"] == raw_paths
+    assert run_manifest["artifacts"]["silver_comments"] == Path(
+        "silver.jsonl"
+    )
     assert "transformation_complete" in caplog.text
     assert "records_parsed=2" in caplog.text
     assert "valid_records=1" in caplog.text
@@ -101,6 +127,8 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "daily_topic_metrics_records=6" in caplog.text
     assert "video_topic_metrics_output_path=video_topics.jsonl" in caplog.text
     assert "daily_topic_metrics_output_path=daily_topics.jsonl" in caplog.text
+    assert "run_manifest_complete" in caplog.text
+    assert "output_path=run.json" in caplog.text
 
 
 @patch("main.process_comment_pages")
