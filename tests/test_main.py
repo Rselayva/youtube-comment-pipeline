@@ -16,12 +16,15 @@ PAGE_SIZE = 10
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
+@patch("main.ingest_video_metadata")
 def test_main_runs_ingestion_read_and_transformation_in_order(
+    mock_ingest_video_metadata,
     mock_ingest_comment_pages,
     mock_read_raw_comment_pages,
     mock_process_comment_pages,
     caplog,
 ):
+    mock_ingest_video_metadata.return_value = Path("video.json")
     raw_paths = [Path("page_0001.json"), Path("page_0002.json")]
     raw_documents = [{"page_number": 1}, {"page_number": 2}]
     mock_ingest_comment_pages.return_value = raw_paths
@@ -46,6 +49,17 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         page_size=PAGE_SIZE,
         ingested_at=ANY,
     )
+    video_ingested_at = mock_ingest_video_metadata.call_args.kwargs[
+        "ingested_at"
+    ]
+    comment_ingested_at = mock_ingest_comment_pages.call_args.kwargs[
+        "ingested_at"
+    ]
+    assert video_ingested_at is comment_ingested_at
+    mock_ingest_video_metadata.assert_called_once_with(
+        video_id=VIDEO_ID,
+        ingested_at=ANY,
+    )
     mock_read_raw_comment_pages.assert_called_once_with(raw_paths)
     mock_process_comment_pages.assert_called_once_with(raw_documents)
     assert "transformation_complete" in caplog.text
@@ -60,12 +74,15 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
+@patch("main.ingest_video_metadata")
 def test_main_logs_and_reraises_downstream_failure(
+    mock_ingest_video_metadata,
     mock_ingest_comment_pages,
     mock_read_raw_comment_pages,
     mock_process_comment_pages,
     caplog,
 ):
+    mock_ingest_video_metadata.return_value = Path("video.json")
     mock_ingest_comment_pages.return_value = [Path("page_0001.json")]
     mock_read_raw_comment_pages.side_effect = ValueError(
         "invalid raw document"
@@ -78,6 +95,26 @@ def test_main_logs_and_reraises_downstream_failure(
     mock_process_comment_pages.assert_not_called()
     assert "pipeline_failed" in caplog.text
     assert "error_type=ValueError" in caplog.text
+
+
+@patch("main.process_comment_pages")
+@patch("main.read_raw_comment_pages")
+@patch("main.ingest_comment_pages")
+@patch("main.ingest_video_metadata")
+def test_main_stops_before_comments_when_video_metadata_fails(
+    mock_ingest_video_metadata,
+    mock_ingest_comment_pages,
+    mock_read_raw_comment_pages,
+    mock_process_comment_pages,
+):
+    mock_ingest_video_metadata.side_effect = ValueError("metadata failed")
+
+    with pytest.raises(ValueError, match="metadata failed"):
+        pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
+
+    mock_ingest_comment_pages.assert_not_called()
+    mock_read_raw_comment_pages.assert_not_called()
+    mock_process_comment_pages.assert_not_called()
 
 
 @patch("main.main")

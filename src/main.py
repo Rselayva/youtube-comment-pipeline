@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timezone
 
 from ingestion.pipeline import ingest_comment_pages
+from ingestion.video_pipeline import ingest_video_metadata
 from storage.raw_reader import read_raw_comment_pages
 from transformation.pipeline import process_comment_pages
 from video_input import parse_cli_args
@@ -26,6 +27,15 @@ def main(video_id: str, max_pages: int, page_size: int):
     logger.info("pipeline_start video_id=%s", video_id)
 
     try:
+        video_metadata_path = ingest_video_metadata(
+            video_id=video_id,
+            ingested_at=ingested_at,
+        )
+        logger.info(
+            "video_metadata_complete video_id=%s output_path=%s",
+            video_id,
+            video_metadata_path,
+        )
         raw_output_paths = ingest_comment_pages(
             video_id=video_id,
             max_pages=max_pages,

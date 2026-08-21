@@ -13,6 +13,8 @@ from ingestion.youtube_client import (
     RETRYABLE_STATUS_CODES,
     get_comments,
     get_replies,
+    get_video_metadata,
+    VIDEOS_BASE_URL,
 )
 from ingestion.youtube_errors import (
     YouTubeCommentsDisabledError,
@@ -378,3 +380,44 @@ def test_get_replies_raises_parent_not_found_without_retry(
     assert raised_error.value.reason == "commentNotFound"
     mock_get.assert_called_once()
     mock_sleep.assert_not_called()
+
+
+@patch("ingestion.youtube_client.requests.get")
+def test_get_video_metadata_requests_snippet_and_statistics(mock_get: Mock):
+    raw_response = {
+        "items": [
+            {
+                "id": "video-1",
+                "snippet": {"title": "Test video"},
+                "statistics": {"viewCount": "100"},
+            }
+        ]
+    }
+    mock_response = Mock()
+    mock_response.json.return_value = raw_response
+    mock_get.return_value = mock_response
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        result = get_video_metadata("video-1")
+
+    mock_get.assert_called_once_with(
+        VIDEOS_BASE_URL,
+        params={
+            "part": "snippet,statistics",
+            "id": "video-1",
+            "key": "test-api-key",
+        },
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    assert result == raw_response
+
+
+@patch("ingestion.youtube_client.requests.get")
+def test_get_video_metadata_fails_before_request_without_api_key(
+    mock_get: Mock,
+):
+    with patch("ingestion.youtube_client.API_KEY", None):
+        with pytest.raises(ValueError, match="YOUTUBE_API_KEY is not set"):
+            get_video_metadata("video-1")
+
+    mock_get.assert_not_called()

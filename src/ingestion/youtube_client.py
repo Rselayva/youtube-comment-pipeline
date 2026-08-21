@@ -24,6 +24,7 @@ API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 BASE_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
 REPLIES_BASE_URL = "https://www.googleapis.com/youtube/v3/comments"
+VIDEOS_BASE_URL = "https://www.googleapis.com/youtube/v3/videos"
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_REQUEST_ATTEMPTS = 3
 INITIAL_BACKOFF_SECONDS = 1
@@ -216,4 +217,22 @@ def get_replies(
         params=params,
         log_context=f"parent_comment_id={parent_comment_id}",
         resource_id=parent_comment_id,
+    )
+
+
+def get_video_metadata(video_id: str) -> dict:
+    if not API_KEY:
+        raise ValueError("YOUTUBE_API_KEY is not set")
+
+    params = {
+        "part": "snippet,statistics",
+        "id": video_id,
+        "key": API_KEY,
+    }
+
+    return request_youtube_page(
+        base_url=VIDEOS_BASE_URL,
+        params=params,
+        log_context=f"video_id={video_id}",
+        resource_id=video_id,
     )
