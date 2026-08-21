@@ -49,12 +49,14 @@ def main(video_id: str, max_pages: int, page_size: int):
             "valid_records=%s rejected_records=%s "
             "existing_silver_records=%s merged_silver_records=%s "
             "silver_records_written=%s "
-            "dictionary_version=%s mention_records=%s "
+            "entity_dictionary_version=%s mention_records=%s "
             "group_mention_records=%s member_mention_records=%s "
             "video_sov_records=%s daily_sov_records=%s "
             "silver_output_path=%s rejected_output_path=%s "
             "mention_output_path=%s video_sov_output_path=%s "
-            "daily_sov_output_path=%s",
+            "daily_sov_output_path=%s "
+            "topic_dictionary_version=%s topic_records=%s "
+            "topic_output_path=%s",
             video_id,
             transformation_result["records_parsed"],
             transformation_result["valid_records"],
@@ -62,7 +64,7 @@ def main(video_id: str, max_pages: int, page_size: int):
             transformation_result["existing_silver_records"],
             transformation_result["merged_silver_records"],
             transformation_result["silver_records_written"],
-            transformation_result["dictionary_version"],
+            transformation_result["entity_dictionary_version"],
             transformation_result["mention_records"],
             transformation_result["group_mention_records"],
             transformation_result["member_mention_records"],
@@ -73,6 +75,9 @@ def main(video_id: str, max_pages: int, page_size: int):
             transformation_result["mention_output_path"],
             transformation_result["video_sov_output_path"],
             transformation_result["daily_sov_output_path"],
+            transformation_result["topic_dictionary_version"],
+            transformation_result["topic_records"],
+            transformation_result["topic_output_path"],
         )
     except Exception as error:
         execution_time_seconds = time.perf_counter() - start_time

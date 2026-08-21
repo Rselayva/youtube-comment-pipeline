@@ -33,6 +33,7 @@ YouTube Data API
   -> incremental Silver JSONL
   -> group and member mention enrichment
   -> Gold group and member share-of-voice metrics
+  -> rule-based comment topic enrichment
 ```
 
 The default workflow processes top-level comments only. It retains
@@ -68,6 +69,7 @@ The pipeline writes versioned current snapshots to:
 
 ```text
 data/silver/youtube/comment_entity_mentions/<dictionary_version>/<video_id>/current_mentions.jsonl
+data/silver/youtube/comment_topics/<dictionary_version>/<video_id>/current_topics.jsonl
 data/gold/youtube/video_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
 data/gold/youtube/daily_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
 ```
@@ -78,6 +80,18 @@ video or UTC day as its denominator. `entity_share_of_voice` uses mention
 comments from the same entity type (`group` or `member`) as its denominator.
 Group metrics represent explicit group-name mentions; member mentions do not
 implicitly add a group mention.
+
+## Comment Topics
+
+The initial `comment_topics_v1` taxonomy contains only the stable Topic IDs
+`vocal`, `dance`, and `visual`. Each topic starts with a small English,
+Traditional Chinese, and Korean keyword set for development and can be
+expanded in later dictionary versions. A top-level comment contributes at
+most one count to each matched Topic ID, even when a keyword is repeated or
+multiple keywords for the same topic are present.
+
+This rule-based topic enrichment is separate from future free-form keyword
+extraction and sentiment analysis.
 
 ## Run the Pipeline
 

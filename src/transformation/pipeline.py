@@ -5,6 +5,11 @@ from enrichment.entity_aliases import (
     load_entity_alias_dictionary,
 )
 from enrichment.mention_enricher import enrich_comment_dataset_mentions
+from enrichment.topic_enricher import enrich_comment_dataset_topics
+from enrichment.topic_keywords import (
+    DEFAULT_TOPIC_KEYWORDS_PATH,
+    load_topic_keyword_dictionary,
+)
 from storage.entity_sov_writer import (
     DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
     DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
@@ -23,6 +28,10 @@ from storage.silver_writer import (
     DEFAULT_SILVER_COMMENTS_DIR,
     write_silver_comments,
 )
+from storage.topic_writer import (
+    DEFAULT_SILVER_TOPICS_DIR,
+    write_topic_snapshot,
+)
 from transformation.comment_parser import (
     parse_comment_page,
     parse_utc_timestamp,
@@ -40,9 +49,11 @@ def process_comment_pages(
     silver_base_dir: Path = DEFAULT_SILVER_COMMENTS_DIR,
     rejected_base_dir: Path = DEFAULT_REJECTED_COMMENTS_DIR,
     mention_base_dir: Path = DEFAULT_SILVER_MENTIONS_DIR,
+    topic_base_dir: Path = DEFAULT_SILVER_TOPICS_DIR,
     video_sov_base_dir: Path = DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
     daily_sov_base_dir: Path = DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
     entity_aliases_path: Path = DEFAULT_ENTITY_ALIASES_PATH,
+    topic_keywords_path: Path = DEFAULT_TOPIC_KEYWORDS_PATH,
 ) -> dict:
     if not raw_documents:
         raise ValueError("At least one raw document is required")
@@ -127,6 +138,17 @@ def process_comment_pages(
         dictionary_version=entity_aliases.dictionary_version,
         base_dir=daily_sov_base_dir,
     )
+    topic_dictionary = load_topic_keyword_dictionary(topic_keywords_path)
+    topic_records = enrich_comment_dataset_topics(
+        incremental_result["merged_comments"],
+        topic_dictionary,
+    )
+    topic_output_path = write_topic_snapshot(
+        topic_records=topic_records,
+        video_id=video_id,
+        dictionary_version=topic_dictionary.dictionary_version,
+        base_dir=topic_base_dir,
+    )
 
     return {
         "records_parsed": len(parsed_comments),
@@ -139,7 +161,7 @@ def process_comment_pages(
         "silver_records_written": len(records_to_write),
         "silver_output_path": silver_output_path,
         "rejected_output_path": rejected_output_path,
-        "dictionary_version": entity_aliases.dictionary_version,
+        "entity_dictionary_version": entity_aliases.dictionary_version,
         "mention_records": len(mention_records),
         "group_mention_records": sum(
             mention["entity_type"] == "group"
@@ -154,4 +176,7 @@ def process_comment_pages(
         "daily_sov_records": len(daily_sov_metrics),
         "video_sov_output_path": video_sov_output_path,
         "daily_sov_output_path": daily_sov_output_path,
+        "topic_dictionary_version": topic_dictionary.dictionary_version,
+        "topic_records": len(topic_records),
+        "topic_output_path": topic_output_path,
     }

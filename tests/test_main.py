@@ -38,7 +38,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "silver_records_written": 1,
         "silver_output_path": Path("silver.jsonl"),
         "rejected_output_path": Path("rejected.jsonl"),
-        "dictionary_version": "nmixx_v2",
+        "entity_dictionary_version": "nmixx_v2",
         "mention_records": 2,
         "group_mention_records": 1,
         "member_mention_records": 1,
@@ -47,6 +47,9 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "daily_sov_records": 14,
         "video_sov_output_path": Path("video_sov.jsonl"),
         "daily_sov_output_path": Path("daily_sov.jsonl"),
+        "topic_dictionary_version": "comment_topics_v1",
+        "topic_records": 3,
+        "topic_output_path": Path("topics.jsonl"),
     }
 
     with caplog.at_level(logging.INFO):
@@ -78,7 +81,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "existing_silver_records=3" in caplog.text
     assert "merged_silver_records=4" in caplog.text
     assert "silver_records_written=1" in caplog.text
-    assert "dictionary_version=nmixx_v2" in caplog.text
+    assert "entity_dictionary_version=nmixx_v2" in caplog.text
     assert "mention_records=2" in caplog.text
     assert "group_mention_records=1" in caplog.text
     assert "member_mention_records=1" in caplog.text
@@ -87,6 +90,9 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "daily_sov_records=14" in caplog.text
     assert "video_sov_output_path=video_sov.jsonl" in caplog.text
     assert "daily_sov_output_path=daily_sov.jsonl" in caplog.text
+    assert "topic_dictionary_version=comment_topics_v1" in caplog.text
+    assert "topic_records=3" in caplog.text
+    assert "topic_output_path=topics.jsonl" in caplog.text
 
 
 @patch("main.process_comment_pages")
