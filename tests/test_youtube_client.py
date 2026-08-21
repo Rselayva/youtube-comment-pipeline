@@ -9,11 +9,14 @@ from ingestion.youtube_client import (
     INITIAL_BACKOFF_SECONDS,
     MAX_REQUEST_ATTEMPTS,
     REQUEST_TIMEOUT_SECONDS,
+    REPLIES_BASE_URL,
     RETRYABLE_STATUS_CODES,
     get_comments,
+    get_replies,
 )
 from ingestion.youtube_errors import (
     YouTubeCommentsDisabledError,
+    YouTubeParentCommentNotFoundError,
     YouTubeQuotaExceededError,
     YouTubeRateLimitError,
     YouTubeVideoNotFoundError,
@@ -316,3 +319,62 @@ def test_get_comments_raises_rate_limit_error_after_max_attempts(
     assert raised_error.value.reason == "rateLimitExceeded"
     assert mock_get.call_count == MAX_REQUEST_ATTEMPTS
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2]
+
+
+@patch("ingestion.youtube_client.requests.get")
+def test_get_replies_raises_error_when_api_key_is_missing(mock_get: Mock):
+    with patch("ingestion.youtube_client.API_KEY", None):
+        with pytest.raises(ValueError, match="YOUTUBE_API_KEY is not set"):
+            get_replies(parent_comment_id="parent-comment-1")
+
+    mock_get.assert_not_called()
+
+
+@patch("ingestion.youtube_client.requests.get")
+def test_get_replies_sends_parent_filter_and_page_token(mock_get: Mock):
+    mock_response = Mock()
+    mock_response.json.return_value = {"items": []}
+    mock_get.return_value = mock_response
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        result = get_replies(
+            parent_comment_id="parent-comment-1",
+            max_results=75,
+            page_token="reply-page-2",
+        )
+
+    mock_get.assert_called_once_with(
+        REPLIES_BASE_URL,
+        params={
+            "part": "snippet",
+            "parentId": "parent-comment-1",
+            "maxResults": 75,
+            "textFormat": "plainText",
+            "key": "test-api-key",
+            "pageToken": "reply-page-2",
+        },
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    assert result == {"items": []}
+
+
+@patch("ingestion.youtube_client.time.sleep")
+@patch("ingestion.youtube_client.requests.get")
+def test_get_replies_raises_parent_not_found_without_retry(
+    mock_get: Mock,
+    mock_sleep: Mock,
+):
+    response, _ = make_error_response(404, "commentNotFound")
+    mock_get.return_value = response
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        with pytest.raises(
+            YouTubeParentCommentNotFoundError
+        ) as raised_error:
+            get_replies(parent_comment_id="missing-parent")
+
+    assert raised_error.value.resource_id == "missing-parent"
+    assert raised_error.value.status_code == 404
+    assert raised_error.value.reason == "commentNotFound"
+    mock_get.assert_called_once()
+    mock_sleep.assert_not_called()
