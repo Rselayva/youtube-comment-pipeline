@@ -2,6 +2,7 @@ import pytest
 
 from video_input import (
     DEFAULT_MAX_PAGES,
+    DEFAULT_PAGE_SIZE,
     PipelineArguments,
     extract_video_id,
     parse_cli_args,
@@ -60,6 +61,7 @@ def test_parse_cli_args_returns_normalized_id_and_default_max_pages():
     assert args == PipelineArguments(
         video_id=VIDEO_ID,
         max_pages=DEFAULT_MAX_PAGES,
+        page_size=DEFAULT_PAGE_SIZE,
     )
 
 
@@ -69,6 +71,17 @@ def test_parse_cli_args_accepts_custom_max_pages():
     assert args == PipelineArguments(
         video_id=VIDEO_ID,
         max_pages=25,
+        page_size=DEFAULT_PAGE_SIZE,
+    )
+
+
+def test_parse_cli_args_accepts_custom_page_size():
+    args = parse_cli_args([VIDEO_ID, "--page-size", "100"])
+
+    assert args == PipelineArguments(
+        video_id=VIDEO_ID,
+        max_pages=DEFAULT_MAX_PAGES,
+        page_size=100,
     )
 
 
@@ -83,5 +96,13 @@ def test_parse_cli_args_exits_before_pipeline_for_invalid_video():
 def test_parse_cli_args_rejects_invalid_max_pages(value):
     with pytest.raises(SystemExit) as error:
         parse_cli_args([VIDEO_ID, "--max-pages", value])
+
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "101", "not-an-integer"])
+def test_parse_cli_args_rejects_invalid_page_size(value):
+    with pytest.raises(SystemExit) as error:
+        parse_cli_args([VIDEO_ID, "--page-size", value])
 
     assert error.value.code == 2

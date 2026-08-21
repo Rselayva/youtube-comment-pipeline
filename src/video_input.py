@@ -18,12 +18,15 @@ PATH_VIDEO_TYPES = {
 }
 DEFAULT_MAX_PAGES = 2
 MAX_ALLOWED_PAGES = 100
+DEFAULT_PAGE_SIZE = 10
+MAX_ALLOWED_PAGE_SIZE = 100
 
 
 @dataclass(frozen=True)
 class PipelineArguments:
     video_id: str
     max_pages: int
+    page_size: int
 
 
 def extract_video_id(value: str) -> str:
@@ -73,6 +76,22 @@ def parse_max_pages(value: str) -> int:
     return max_pages
 
 
+def parse_page_size(value: str) -> int:
+    try:
+        page_size = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "page size must be an integer"
+        ) from error
+
+    if not 1 <= page_size <= MAX_ALLOWED_PAGE_SIZE:
+        raise argparse.ArgumentTypeError(
+            f"page size must be between 1 and {MAX_ALLOWED_PAGE_SIZE}"
+        )
+
+    return page_size
+
+
 def parse_cli_args(
     argv: list[str] | None = None,
 ) -> PipelineArguments:
@@ -93,6 +112,15 @@ def parse_cli_args(
             f"(default: {DEFAULT_MAX_PAGES}, max: {MAX_ALLOWED_PAGES})"
         ),
     )
+    parser.add_argument(
+        "--page-size",
+        type=parse_page_size,
+        default=DEFAULT_PAGE_SIZE,
+        help=(
+            "comment threads requested per API page "
+            f"(default: {DEFAULT_PAGE_SIZE}, max: {MAX_ALLOWED_PAGE_SIZE})"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -103,4 +131,5 @@ def parse_cli_args(
     return PipelineArguments(
         video_id=video_id,
         max_pages=args.max_pages,
+        page_size=args.page_size,
     )

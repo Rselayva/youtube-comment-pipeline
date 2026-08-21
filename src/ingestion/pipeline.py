@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 def ingest_comment_pages(
     video_id: str,
     max_pages: int,
+    page_size: int,
     ingested_at: datetime,
 ) -> list[Path]:
     page_token = None
@@ -20,6 +21,7 @@ def ingest_comment_pages(
     for page_number in range(1, max_pages + 1):
         page = get_comments(
             video_id,
+            max_results=page_size,
             page_token=page_token,
         )
 

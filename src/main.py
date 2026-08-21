@@ -20,7 +20,7 @@ def configure_logging():
     )
 
 
-def main(video_id: str, max_pages: int):
+def main(video_id: str, max_pages: int, page_size: int):
     start_time = time.perf_counter()
     ingested_at = datetime.now(timezone.utc)
     logger.info("pipeline_start video_id=%s", video_id)
@@ -29,6 +29,7 @@ def main(video_id: str, max_pages: int):
         raw_output_paths = ingest_comment_pages(
             video_id=video_id,
             max_pages=max_pages,
+            page_size=page_size,
             ingested_at=ingested_at,
         )
         raw_documents = read_raw_comment_pages(raw_output_paths)
@@ -74,6 +75,7 @@ def run_cli():
     main(
         video_id=args.video_id,
         max_pages=args.max_pages,
+        page_size=args.page_size,
     )
 
 
