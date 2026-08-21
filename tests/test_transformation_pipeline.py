@@ -26,6 +26,10 @@ RAW_DOCUMENTS = [
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_daily_entity_sov_snapshot")
+@patch("transformation.pipeline.write_video_entity_sov_snapshot")
+@patch("transformation.pipeline.build_daily_entity_sov_metrics")
+@patch("transformation.pipeline.build_video_entity_sov_metrics")
 @patch("transformation.pipeline.write_mention_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_mentions")
 @patch("transformation.pipeline.load_entity_alias_dictionary")
@@ -39,6 +43,10 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     mock_load_entity_alias_dictionary,
     mock_enrich_comment_dataset_mentions,
     mock_write_mention_snapshot,
+    mock_build_video_entity_sov_metrics,
+    mock_build_daily_entity_sov_metrics,
+    mock_write_video_entity_sov_snapshot,
+    mock_write_daily_entity_sov_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
     tmp_path,
@@ -72,6 +80,16 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     ]
     mock_enrich_comment_dataset_mentions.return_value = mention_records
     mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
+    video_sov_metrics = [{"grain": "video"}]
+    daily_sov_metrics = [{"grain": "daily"}, {"grain": "daily"}]
+    mock_build_video_entity_sov_metrics.return_value = video_sov_metrics
+    mock_build_daily_entity_sov_metrics.return_value = daily_sov_metrics
+    mock_write_video_entity_sov_snapshot.return_value = Path(
+        "video_sov.jsonl"
+    )
+    mock_write_daily_entity_sov_snapshot.return_value = Path(
+        "daily_sov.jsonl"
+    )
     mock_write_silver_comments.return_value = Path("silver.jsonl")
     mock_write_rejected_comments.return_value = Path("rejected.jsonl")
 
@@ -80,6 +98,8 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         silver_base_dir=tmp_path / "silver",
         rejected_base_dir=tmp_path / "rejected",
         mention_base_dir=tmp_path / "mentions",
+        video_sov_base_dir=tmp_path / "video-sov",
+        daily_sov_base_dir=tmp_path / "daily-sov",
         entity_aliases_path=tmp_path / "aliases.json",
     )
 
@@ -134,6 +154,28 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         dictionary_version="nmixx_v2",
         base_dir=tmp_path / "mentions",
     )
+    mock_build_video_entity_sov_metrics.assert_called_once_with(
+        [first_comment],
+        mention_records,
+        mock_load_entity_alias_dictionary.return_value,
+    )
+    mock_build_daily_entity_sov_metrics.assert_called_once_with(
+        [first_comment],
+        mention_records,
+        mock_load_entity_alias_dictionary.return_value,
+    )
+    mock_write_video_entity_sov_snapshot.assert_called_once_with(
+        metrics=video_sov_metrics,
+        video_id="video-1",
+        dictionary_version="nmixx_v2",
+        base_dir=tmp_path / "video-sov",
+    )
+    mock_write_daily_entity_sov_snapshot.assert_called_once_with(
+        metrics=daily_sov_metrics,
+        video_id="video-1",
+        dictionary_version="nmixx_v2",
+        base_dir=tmp_path / "daily-sov",
+    )
     assert result == {
         "records_parsed": 2,
         "valid_records": 1,
@@ -148,11 +190,19 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         "group_mention_records": 1,
         "member_mention_records": 1,
         "mention_output_path": Path("mentions.jsonl"),
+        "video_sov_records": 1,
+        "daily_sov_records": 2,
+        "video_sov_output_path": Path("video_sov.jsonl"),
+        "daily_sov_output_path": Path("daily_sov.jsonl"),
     }
 
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_daily_entity_sov_snapshot")
+@patch("transformation.pipeline.write_video_entity_sov_snapshot")
+@patch("transformation.pipeline.build_daily_entity_sov_metrics")
+@patch("transformation.pipeline.build_video_entity_sov_metrics")
 @patch("transformation.pipeline.write_mention_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_mentions")
 @patch("transformation.pipeline.load_entity_alias_dictionary")
@@ -166,6 +216,10 @@ def test_process_comment_pages_skips_empty_output_datasets(
     mock_load_entity_alias_dictionary,
     mock_enrich_comment_dataset_mentions,
     mock_write_mention_snapshot,
+    mock_build_video_entity_sov_metrics,
+    mock_build_daily_entity_sov_metrics,
+    mock_write_video_entity_sov_snapshot,
+    mock_write_daily_entity_sov_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
 ):
@@ -182,6 +236,14 @@ def test_process_comment_pages_skips_empty_output_datasets(
     )
     mock_enrich_comment_dataset_mentions.return_value = []
     mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
+    mock_build_video_entity_sov_metrics.return_value = []
+    mock_build_daily_entity_sov_metrics.return_value = []
+    mock_write_video_entity_sov_snapshot.return_value = Path(
+        "video_sov.jsonl"
+    )
+    mock_write_daily_entity_sov_snapshot.return_value = Path(
+        "daily_sov.jsonl"
+    )
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
@@ -198,10 +260,16 @@ def test_process_comment_pages_skips_empty_output_datasets(
     assert result["rejected_output_path"] is None
     assert result["mention_records"] == 0
     assert result["mention_output_path"] == Path("mentions.jsonl")
+    assert result["video_sov_records"] == 0
+    assert result["daily_sov_records"] == 0
 
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_daily_entity_sov_snapshot")
+@patch("transformation.pipeline.write_video_entity_sov_snapshot")
+@patch("transformation.pipeline.build_daily_entity_sov_metrics")
+@patch("transformation.pipeline.build_video_entity_sov_metrics")
 @patch("transformation.pipeline.write_mention_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_mentions")
 @patch("transformation.pipeline.load_entity_alias_dictionary")
@@ -215,6 +283,10 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     mock_load_entity_alias_dictionary,
     mock_enrich_comment_dataset_mentions,
     mock_write_mention_snapshot,
+    mock_build_video_entity_sov_metrics,
+    mock_build_daily_entity_sov_metrics,
+    mock_write_video_entity_sov_snapshot,
+    mock_write_daily_entity_sov_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
 ):
@@ -233,6 +305,18 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     mention_records = [{"entity_type": "member"}]
     mock_enrich_comment_dataset_mentions.return_value = mention_records
     mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
+    mock_build_video_entity_sov_metrics.return_value = [
+        {"grain": "video"}
+    ]
+    mock_build_daily_entity_sov_metrics.return_value = [
+        {"grain": "daily"}
+    ]
+    mock_write_video_entity_sov_snapshot.return_value = Path(
+        "video_sov.jsonl"
+    )
+    mock_write_daily_entity_sov_snapshot.return_value = Path(
+        "daily_sov.jsonl"
+    )
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
@@ -245,6 +329,8 @@ def test_process_comment_pages_skips_unchanged_silver_records(
         mock_load_entity_alias_dictionary.return_value,
     )
     assert result["mention_records"] == 1
+    assert result["video_sov_records"] == 1
+    assert result["daily_sov_records"] == 1
 
 
 def test_process_comment_pages_rejects_empty_batch():
@@ -315,12 +401,16 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
     silver_dir = tmp_path / "silver"
     rejected_dir = tmp_path / "rejected"
     mention_dir = tmp_path / "mentions"
+    video_sov_dir = tmp_path / "video-sov"
+    daily_sov_dir = tmp_path / "daily-sov"
 
     first_result = process_comment_pages(
         [raw_document],
         silver_base_dir=silver_dir,
         rejected_base_dir=rejected_dir,
         mention_base_dir=mention_dir,
+        video_sov_base_dir=video_sov_dir,
+        daily_sov_base_dir=daily_sov_dir,
     )
     reingested_document = raw_document.copy()
     reingested_document["ingested_at"] = "2026-08-20T10:30:00+00:00"
@@ -329,6 +419,8 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
         silver_base_dir=silver_dir,
         rejected_base_dir=rejected_dir,
         mention_base_dir=mention_dir,
+        video_sov_base_dir=video_sov_dir,
+        daily_sov_base_dir=daily_sov_dir,
     )
 
     assert first_result["silver_records_written"] == 1
@@ -357,3 +449,21 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
         "海嫄",
         "吳海嫄",
     ]
+    assert second_result["video_sov_records"] == 7
+    assert second_result["daily_sov_records"] == 7
+    saved_video_metrics = [
+        json.loads(line)
+        for line in second_result["video_sov_output_path"]
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    haewon_metric = next(
+        metric
+        for metric in saved_video_metrics
+        if metric["entity_id"] == "nmixx_haewon"
+    )
+    assert haewon_metric["mention_comment_count"] == 1
+    assert haewon_metric["comment_share_of_voice"] == 1.0
+    assert haewon_metric["entity_share_of_voice"] == 1.0
+    assert len(list(video_sov_dir.rglob("current_metrics.jsonl"))) == 1
+    assert len(list(daily_sov_dir.rglob("current_metrics.jsonl"))) == 1

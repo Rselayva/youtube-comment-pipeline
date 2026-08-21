@@ -43,6 +43,10 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "group_mention_records": 1,
         "member_mention_records": 1,
         "mention_output_path": Path("mentions.jsonl"),
+        "video_sov_records": 7,
+        "daily_sov_records": 14,
+        "video_sov_output_path": Path("video_sov.jsonl"),
+        "daily_sov_output_path": Path("daily_sov.jsonl"),
     }
 
     with caplog.at_level(logging.INFO):
@@ -79,6 +83,10 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "group_mention_records=1" in caplog.text
     assert "member_mention_records=1" in caplog.text
     assert "mention_output_path=mentions.jsonl" in caplog.text
+    assert "video_sov_records=7" in caplog.text
+    assert "daily_sov_records=14" in caplog.text
+    assert "video_sov_output_path=video_sov.jsonl" in caplog.text
+    assert "daily_sov_output_path=daily_sov.jsonl" in caplog.text
 
 
 @patch("main.process_comment_pages")

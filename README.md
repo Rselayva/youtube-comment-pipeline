@@ -58,6 +58,27 @@ The existing `comment_text` field remains the source text for group/member
 mention, keyword, and sentiment processing. Reply Silver processing is
 intentionally out of scope for the default roadmap.
 
+## Entity Mention Metrics
+
+The NMIXX development dictionary is versioned as `nmixx_v2`. Each top-level
+comment contributes at most one mention to each matched group or member,
+regardless of repeated names or multiple aliases in the same comment.
+
+The pipeline writes versioned current snapshots to:
+
+```text
+data/silver/youtube/comment_entity_mentions/<dictionary_version>/<video_id>/current_mentions.jsonl
+data/gold/youtube/video_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
+data/gold/youtube/daily_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
+```
+
+Gold entity metrics include all configured groups and members, including zero
+mention rows. `comment_share_of_voice` uses all top-level comments in the
+video or UTC day as its denominator. `entity_share_of_voice` uses mention
+comments from the same entity type (`group` or `member`) as its denominator.
+Group metrics represent explicit group-name mentions; member mentions do not
+implicitly add a group mention.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:

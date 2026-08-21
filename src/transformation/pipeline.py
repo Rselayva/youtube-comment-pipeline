@@ -5,6 +5,12 @@ from enrichment.entity_aliases import (
     load_entity_alias_dictionary,
 )
 from enrichment.mention_enricher import enrich_comment_dataset_mentions
+from storage.entity_sov_writer import (
+    DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
+    DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
+    write_daily_entity_sov_snapshot,
+    write_video_entity_sov_snapshot,
+)
 from storage.mention_writer import (
     DEFAULT_SILVER_MENTIONS_DIR,
     write_mention_snapshot,
@@ -22,6 +28,10 @@ from transformation.comment_parser import (
     parse_utc_timestamp,
 )
 from transformation.incremental import prepare_incremental_comments
+from transformation.entity_sov_metrics import (
+    build_daily_entity_sov_metrics,
+    build_video_entity_sov_metrics,
+)
 from validation.comment_validator import validate_comment_dataset
 
 
@@ -30,6 +40,8 @@ def process_comment_pages(
     silver_base_dir: Path = DEFAULT_SILVER_COMMENTS_DIR,
     rejected_base_dir: Path = DEFAULT_REJECTED_COMMENTS_DIR,
     mention_base_dir: Path = DEFAULT_SILVER_MENTIONS_DIR,
+    video_sov_base_dir: Path = DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
+    daily_sov_base_dir: Path = DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
     entity_aliases_path: Path = DEFAULT_ENTITY_ALIASES_PATH,
 ) -> dict:
     if not raw_documents:
@@ -93,6 +105,28 @@ def process_comment_pages(
         dictionary_version=entity_aliases.dictionary_version,
         base_dir=mention_base_dir,
     )
+    video_sov_metrics = build_video_entity_sov_metrics(
+        incremental_result["merged_comments"],
+        mention_records,
+        entity_aliases,
+    )
+    daily_sov_metrics = build_daily_entity_sov_metrics(
+        incremental_result["merged_comments"],
+        mention_records,
+        entity_aliases,
+    )
+    video_sov_output_path = write_video_entity_sov_snapshot(
+        metrics=video_sov_metrics,
+        video_id=video_id,
+        dictionary_version=entity_aliases.dictionary_version,
+        base_dir=video_sov_base_dir,
+    )
+    daily_sov_output_path = write_daily_entity_sov_snapshot(
+        metrics=daily_sov_metrics,
+        video_id=video_id,
+        dictionary_version=entity_aliases.dictionary_version,
+        base_dir=daily_sov_base_dir,
+    )
 
     return {
         "records_parsed": len(parsed_comments),
@@ -116,4 +150,8 @@ def process_comment_pages(
             for mention in mention_records
         ),
         "mention_output_path": mention_output_path,
+        "video_sov_records": len(video_sov_metrics),
+        "daily_sov_records": len(daily_sov_metrics),
+        "video_sov_output_path": video_sov_output_path,
+        "daily_sov_output_path": daily_sov_output_path,
     }
