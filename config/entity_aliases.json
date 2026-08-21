@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "dictionary_version": "nmixx_v1",
+  "dictionary_version": "nmixx_v2",
+  "description": "目前為開發階段使用的關鍵詞版本；未來可依需求建立新版本，加入更多相關暱稱。",
   "source": "https://nmixx.jype.com/Default/Profile",
   "source_checked_at": "2026-08-21",
   "groups": [
@@ -18,7 +19,10 @@
       "group_id": "nmixx",
       "canonical_name": "LILY",
       "aliases": [
-        "릴리"
+        "릴리",
+        "莉",
+        "莉莉",
+        "朴珍"
       ]
     },
     {
@@ -26,7 +30,10 @@
       "group_id": "nmixx",
       "canonical_name": "HAEWON",
       "aliases": [
-        "해원"
+        "해원",
+        "嫄",
+        "海嫄",
+        "吳海嫄"
       ]
     },
     {
@@ -34,7 +41,10 @@
       "group_id": "nmixx",
       "canonical_name": "SULLYOON",
       "aliases": [
-        "설윤"
+        "설윤",
+        "薛",
+        "侖娥",
+        "薛侖娥"
       ]
     },
     {
@@ -42,7 +52,10 @@
       "group_id": "nmixx",
       "canonical_name": "BAE",
       "aliases": [
-        "배이"
+        "배이",
+        "裴",
+        "眞率",
+        "裴眞率"
       ]
     },
     {
@@ -50,7 +63,10 @@
       "group_id": "nmixx",
       "canonical_name": "JIWOO",
       "aliases": [
-        "지우"
+        "지우",
+        "啾",
+        "智佑",
+        "金智佑"
       ]
     },
     {
@@ -58,7 +74,10 @@
       "group_id": "nmixx",
       "canonical_name": "KYUJIN",
       "aliases": [
-        "규진"
+        "규진",
+        "圭",
+        "圭珍",
+        "張圭珍"
       ]
     }
   ]

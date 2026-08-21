@@ -27,6 +27,7 @@ class MemberAlias:
 class EntityAliasDictionary:
     schema_version: int
     dictionary_version: str
+    description: str
     groups_by_id: dict[str, GroupAlias]
     members_by_id: dict[str, MemberAlias]
     group_alias_to_id: dict[str, str]
@@ -112,6 +113,10 @@ def load_entity_alias_dictionary(
     dictionary_version = _require_non_empty_string(
         raw_dictionary.get("dictionary_version"),
         "dictionary_version",
+    )
+    description = _require_non_empty_string(
+        raw_dictionary.get("description"),
+        "description",
     )
     raw_groups = raw_dictionary.get("groups")
     raw_members = raw_dictionary.get("members")
@@ -206,6 +211,7 @@ def load_entity_alias_dictionary(
     return EntityAliasDictionary(
         schema_version=schema_version,
         dictionary_version=dictionary_version,
+        description=description,
         groups_by_id=groups_by_id,
         members_by_id=members_by_id,
         group_alias_to_id=group_alias_to_id,
