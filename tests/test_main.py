@@ -38,6 +38,11 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "silver_records_written": 1,
         "silver_output_path": Path("silver.jsonl"),
         "rejected_output_path": Path("rejected.jsonl"),
+        "dictionary_version": "nmixx_v2",
+        "mention_records": 2,
+        "group_mention_records": 1,
+        "member_mention_records": 1,
+        "mention_output_path": Path("mentions.jsonl"),
     }
 
     with caplog.at_level(logging.INFO):
@@ -69,6 +74,11 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "existing_silver_records=3" in caplog.text
     assert "merged_silver_records=4" in caplog.text
     assert "silver_records_written=1" in caplog.text
+    assert "dictionary_version=nmixx_v2" in caplog.text
+    assert "mention_records=2" in caplog.text
+    assert "group_mention_records=1" in caplog.text
+    assert "member_mention_records=1" in caplog.text
+    assert "mention_output_path=mentions.jsonl" in caplog.text
 
 
 @patch("main.process_comment_pages")

@@ -1,5 +1,14 @@
 from pathlib import Path
 
+from enrichment.entity_aliases import (
+    DEFAULT_ENTITY_ALIASES_PATH,
+    load_entity_alias_dictionary,
+)
+from enrichment.mention_enricher import enrich_comment_dataset_mentions
+from storage.mention_writer import (
+    DEFAULT_SILVER_MENTIONS_DIR,
+    write_mention_snapshot,
+)
 from storage.rejected_writer import (
     DEFAULT_REJECTED_COMMENTS_DIR,
     write_rejected_comments,
@@ -20,6 +29,8 @@ def process_comment_pages(
     raw_documents: list[dict],
     silver_base_dir: Path = DEFAULT_SILVER_COMMENTS_DIR,
     rejected_base_dir: Path = DEFAULT_REJECTED_COMMENTS_DIR,
+    mention_base_dir: Path = DEFAULT_SILVER_MENTIONS_DIR,
+    entity_aliases_path: Path = DEFAULT_ENTITY_ALIASES_PATH,
 ) -> dict:
     if not raw_documents:
         raise ValueError("At least one raw document is required")
@@ -46,17 +57,11 @@ def process_comment_pages(
         parsed_comments
     )
 
-    incremental_result = {
-        "existing_records": 0,
-        "merged_records": 0,
-        "records_to_write": [],
-    }
-    if valid_records:
-        incremental_result = prepare_incremental_comments(
-            incoming_comments=valid_records,
-            video_id=video_id,
-            silver_base_dir=silver_base_dir,
-        )
+    incremental_result = prepare_incremental_comments(
+        incoming_comments=valid_records,
+        video_id=video_id,
+        silver_base_dir=silver_base_dir,
+    )
 
     records_to_write = incremental_result["records_to_write"]
     silver_output_path = None
@@ -77,6 +82,18 @@ def process_comment_pages(
             base_dir=rejected_base_dir,
         )
 
+    entity_aliases = load_entity_alias_dictionary(entity_aliases_path)
+    mention_records = enrich_comment_dataset_mentions(
+        incremental_result["merged_comments"],
+        entity_aliases,
+    )
+    mention_output_path = write_mention_snapshot(
+        mentions=mention_records,
+        video_id=video_id,
+        dictionary_version=entity_aliases.dictionary_version,
+        base_dir=mention_base_dir,
+    )
+
     return {
         "records_parsed": len(parsed_comments),
         "valid_records": len(valid_records),
@@ -88,4 +105,15 @@ def process_comment_pages(
         "silver_records_written": len(records_to_write),
         "silver_output_path": silver_output_path,
         "rejected_output_path": rejected_output_path,
+        "dictionary_version": entity_aliases.dictionary_version,
+        "mention_records": len(mention_records),
+        "group_mention_records": sum(
+            mention["entity_type"] == "group"
+            for mention in mention_records
+        ),
+        "member_mention_records": sum(
+            mention["entity_type"] == "member"
+            for mention in mention_records
+        ),
+        "mention_output_path": mention_output_path,
     }

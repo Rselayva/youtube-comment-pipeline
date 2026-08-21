@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import call, patch
@@ -25,6 +26,9 @@ RAW_DOCUMENTS = [
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_mention_snapshot")
+@patch("transformation.pipeline.enrich_comment_dataset_mentions")
+@patch("transformation.pipeline.load_entity_alias_dictionary")
 @patch("transformation.pipeline.prepare_incremental_comments")
 @patch("transformation.pipeline.validate_comment_dataset")
 @patch("transformation.pipeline.parse_comment_page")
@@ -32,6 +36,9 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     mock_parse_comment_page,
     mock_validate_comment_dataset,
     mock_prepare_incremental_comments,
+    mock_load_entity_alias_dictionary,
+    mock_enrich_comment_dataset_mentions,
+    mock_write_mention_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
     tmp_path,
@@ -54,7 +61,17 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         "existing_records": 3,
         "merged_records": 4,
         "records_to_write": [first_comment],
+        "merged_comments": [first_comment],
     }
+    mock_load_entity_alias_dictionary.return_value.dictionary_version = (
+        "nmixx_v2"
+    )
+    mention_records = [
+        {"entity_type": "group"},
+        {"entity_type": "member"},
+    ]
+    mock_enrich_comment_dataset_mentions.return_value = mention_records
+    mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
     mock_write_silver_comments.return_value = Path("silver.jsonl")
     mock_write_rejected_comments.return_value = Path("rejected.jsonl")
 
@@ -62,6 +79,8 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         raw_documents=RAW_DOCUMENTS,
         silver_base_dir=tmp_path / "silver",
         rejected_base_dir=tmp_path / "rejected",
+        mention_base_dir=tmp_path / "mentions",
+        entity_aliases_path=tmp_path / "aliases.json",
     )
 
     assert mock_parse_comment_page.call_args_list == [
@@ -102,6 +121,19 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         ),
         base_dir=tmp_path / "rejected",
     )
+    mock_enrich_comment_dataset_mentions.assert_called_once_with(
+        [first_comment],
+        mock_load_entity_alias_dictionary.return_value,
+    )
+    mock_load_entity_alias_dictionary.assert_called_once_with(
+        tmp_path / "aliases.json"
+    )
+    mock_write_mention_snapshot.assert_called_once_with(
+        mentions=mention_records,
+        video_id="video-1",
+        dictionary_version="nmixx_v2",
+        base_dir=tmp_path / "mentions",
+    )
     assert result == {
         "records_parsed": 2,
         "valid_records": 1,
@@ -111,11 +143,19 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         "silver_records_written": 1,
         "silver_output_path": Path("silver.jsonl"),
         "rejected_output_path": Path("rejected.jsonl"),
+        "dictionary_version": "nmixx_v2",
+        "mention_records": 2,
+        "group_mention_records": 1,
+        "member_mention_records": 1,
+        "mention_output_path": Path("mentions.jsonl"),
     }
 
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_mention_snapshot")
+@patch("transformation.pipeline.enrich_comment_dataset_mentions")
+@patch("transformation.pipeline.load_entity_alias_dictionary")
 @patch("transformation.pipeline.prepare_incremental_comments")
 @patch("transformation.pipeline.validate_comment_dataset")
 @patch("transformation.pipeline.parse_comment_page")
@@ -123,24 +163,48 @@ def test_process_comment_pages_skips_empty_output_datasets(
     mock_parse_comment_page,
     mock_validate_comment_dataset,
     mock_prepare_incremental_comments,
+    mock_load_entity_alias_dictionary,
+    mock_enrich_comment_dataset_mentions,
+    mock_write_mention_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
 ):
     mock_parse_comment_page.return_value = []
     mock_validate_comment_dataset.return_value = ([], [])
+    mock_prepare_incremental_comments.return_value = {
+        "existing_records": 0,
+        "merged_records": 0,
+        "records_to_write": [],
+        "merged_comments": [],
+    }
+    mock_load_entity_alias_dictionary.return_value.dictionary_version = (
+        "nmixx_v2"
+    )
+    mock_enrich_comment_dataset_mentions.return_value = []
+    mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
     mock_write_silver_comments.assert_not_called()
     mock_write_rejected_comments.assert_not_called()
-    mock_prepare_incremental_comments.assert_not_called()
+    mock_prepare_incremental_comments.assert_called_once_with(
+        incoming_comments=[],
+        video_id="video-1",
+        silver_base_dir=Path("data/silver/youtube/comments"),
+    )
+    mock_write_mention_snapshot.assert_called_once()
     assert result["silver_records_written"] == 0
     assert result["silver_output_path"] is None
     assert result["rejected_output_path"] is None
+    assert result["mention_records"] == 0
+    assert result["mention_output_path"] == Path("mentions.jsonl")
 
 
 @patch("transformation.pipeline.write_rejected_comments")
 @patch("transformation.pipeline.write_silver_comments")
+@patch("transformation.pipeline.write_mention_snapshot")
+@patch("transformation.pipeline.enrich_comment_dataset_mentions")
+@patch("transformation.pipeline.load_entity_alias_dictionary")
 @patch("transformation.pipeline.prepare_incremental_comments")
 @patch("transformation.pipeline.validate_comment_dataset")
 @patch("transformation.pipeline.parse_comment_page")
@@ -148,6 +212,9 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     mock_parse_comment_page,
     mock_validate_comment_dataset,
     mock_prepare_incremental_comments,
+    mock_load_entity_alias_dictionary,
+    mock_enrich_comment_dataset_mentions,
+    mock_write_mention_snapshot,
     mock_write_silver_comments,
     mock_write_rejected_comments,
 ):
@@ -158,7 +225,14 @@ def test_process_comment_pages_skips_unchanged_silver_records(
         "existing_records": 1,
         "merged_records": 1,
         "records_to_write": [],
+        "merged_comments": [unchanged_comment],
     }
+    mock_load_entity_alias_dictionary.return_value.dictionary_version = (
+        "nmixx_v2"
+    )
+    mention_records = [{"entity_type": "member"}]
+    mock_enrich_comment_dataset_mentions.return_value = mention_records
+    mock_write_mention_snapshot.return_value = Path("mentions.jsonl")
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
@@ -166,6 +240,11 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     mock_write_rejected_comments.assert_not_called()
     assert result["silver_records_written"] == 0
     assert result["silver_output_path"] is None
+    mock_enrich_comment_dataset_mentions.assert_called_once_with(
+        [unchanged_comment],
+        mock_load_entity_alias_dictionary.return_value,
+    )
+    assert result["mention_records"] == 1
 
 
 def test_process_comment_pages_rejects_empty_batch():
@@ -220,7 +299,9 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
                             "snippet": {
                                 "videoId": "video-1",
                                 "authorDisplayName": "Test Author",
-                                "textOriginal": "Unchanged comment",
+                                "textOriginal": (
+                                    "NMIXX 海嫄 吳海嫄 NMIXX"
+                                ),
                                 "likeCount": 1,
                                 "publishedAt": "2026-08-19T08:00:00Z",
                                 "updatedAt": "2026-08-19T08:00:00Z",
@@ -233,11 +314,13 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
     }
     silver_dir = tmp_path / "silver"
     rejected_dir = tmp_path / "rejected"
+    mention_dir = tmp_path / "mentions"
 
     first_result = process_comment_pages(
         [raw_document],
         silver_base_dir=silver_dir,
         rejected_base_dir=rejected_dir,
+        mention_base_dir=mention_dir,
     )
     reingested_document = raw_document.copy()
     reingested_document["ingested_at"] = "2026-08-20T10:30:00+00:00"
@@ -245,6 +328,7 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
         [reingested_document],
         silver_base_dir=silver_dir,
         rejected_base_dir=rejected_dir,
+        mention_base_dir=mention_dir,
     )
 
     assert first_result["silver_records_written"] == 1
@@ -253,3 +337,23 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
     assert second_result["silver_records_written"] == 0
     assert second_result["silver_output_path"] is None
     assert len(list(silver_dir.rglob("*_comments.jsonl"))) == 1
+    assert second_result["mention_output_path"].exists()
+    assert len(list(mention_dir.rglob("current_mentions.jsonl"))) == 1
+    saved_mentions = [
+        json.loads(line)
+        for line in second_result["mention_output_path"]
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [mention["entity_id"] for mention in saved_mentions] == [
+        "nmixx",
+        "nmixx_haewon",
+    ]
+    assert [mention["mention_count"] for mention in saved_mentions] == [
+        1,
+        1,
+    ]
+    assert saved_mentions[1]["matched_aliases"] == [
+        "海嫄",
+        "吳海嫄",
+    ]
