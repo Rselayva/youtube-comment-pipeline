@@ -141,6 +141,19 @@ and tracebacks are excluded from the manifest; tracebacks remain in the
 application log. If the failed manifest cannot be written, that secondary
 error is logged without replacing the original pipeline exception.
 
+Show the latest run summary for a video without calling the YouTube API:
+
+```bash
+python src/run_summary.py aFrQIJ5cbRc
+python src/run_summary.py "https://www.youtube.com/watch?v=aFrQIJ5cbRc"
+```
+
+The read-only command validates the manifest schema and prints JSON containing
+the latest status, timestamps, parameters, dictionary versions, counts,
+artifact paths, and failure stage/type when applicable. Latest-run selection
+uses the UTC timestamped manifest path rather than filesystem modification
+time.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:
