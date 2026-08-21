@@ -2,6 +2,8 @@ import json
 from datetime import timezone
 from pathlib import Path
 
+from validation.gold_validator import validate_topic_metrics
+
 
 DEFAULT_GOLD_VIDEO_TOPIC_METRICS_DIR = Path(
     "data/gold/youtube/video_topic_metrics"
@@ -59,6 +61,12 @@ def write_video_topic_metrics_snapshot(
     dictionary_version: str,
     base_dir: Path = DEFAULT_GOLD_VIDEO_TOPIC_METRICS_DIR,
 ) -> Path:
+    validate_topic_metrics(
+        metrics,
+        daily=False,
+        expected_video_id=video_id,
+        expected_dictionary_version=dictionary_version,
+    )
     return _write_topic_metrics_snapshot(
         metrics,
         video_id,
@@ -73,6 +81,12 @@ def write_daily_topic_metrics_snapshot(
     dictionary_version: str,
     base_dir: Path = DEFAULT_GOLD_DAILY_TOPIC_METRICS_DIR,
 ) -> Path:
+    validate_topic_metrics(
+        metrics,
+        daily=True,
+        expected_video_id=video_id,
+        expected_dictionary_version=dictionary_version,
+    )
     return _write_topic_metrics_snapshot(
         metrics,
         video_id,

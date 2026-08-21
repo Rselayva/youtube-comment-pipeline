@@ -112,6 +112,15 @@ rows for the same video and dictionary version when a newer current snapshot
 is loaded. Example ranking and trend queries are available in
 `sql/example_queries.sql`; replace `YOUR_VIDEO_ID` before running them.
 
+## Gold Data Quality
+
+Gold writers validate each non-empty snapshot before creating or replacing a
+file. The checks cover exact schema fields, non-negative counts, ratio ranges
+and formulas, unique logical keys, grouped denominator totals, consistent
+snapshot metadata, and agreement between each record's video/dictionary
+version and its output partition. If validation fails, the current Gold
+snapshot is not replaced.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:

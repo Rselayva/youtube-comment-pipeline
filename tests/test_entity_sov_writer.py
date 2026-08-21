@@ -20,8 +20,8 @@ def make_metric() -> dict:
         "comment_count": 3,
         "mention_comment_count": 2,
         "comment_share_of_voice": 2 / 3,
-        "entity_type_mention_comment_count": 3,
-        "entity_share_of_voice": 2 / 3,
+        "entity_type_mention_comment_count": 2,
+        "entity_share_of_voice": 1.0,
         "snapshot_at": datetime(
             2026,
             8,
@@ -82,14 +82,18 @@ def test_entity_sov_snapshot_replaces_previous_content(tmp_path):
     assert json.loads(saved_lines[0])["entity_id"] == "nmixx_lily"
 
 
-def test_entity_sov_snapshot_removes_partial_file_on_failure(tmp_path):
+def test_entity_sov_snapshot_rejects_invalid_metrics_before_writing(
+    tmp_path,
+):
     invalid_metric = make_metric()
-    del invalid_metric["snapshot_at"]
+    invalid_metric["entity_share_of_voice"] = 0.5
 
-    with pytest.raises(KeyError, match="snapshot_at"):
+    with pytest.raises(
+        ValueError,
+        match="entity_share_of_voice does not match",
+    ):
         write_video_entity_sov_snapshot(
             [invalid_metric], "video-1", "nmixx_v2", tmp_path
         )
 
-    output_dir = tmp_path / "nmixx_v2" / "video-1"
-    assert list(output_dir.iterdir()) == []
+    assert not (tmp_path / "nmixx_v2" / "video-1").exists()

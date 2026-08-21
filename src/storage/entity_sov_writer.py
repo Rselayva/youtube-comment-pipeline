@@ -2,6 +2,8 @@ import json
 from datetime import timezone
 from pathlib import Path
 
+from validation.gold_validator import validate_entity_sov_metrics
+
 
 DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR = Path(
     "data/gold/youtube/video_entity_sov"
@@ -60,6 +62,12 @@ def write_video_entity_sov_snapshot(
     dictionary_version: str,
     base_dir: Path = DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
 ) -> Path:
+    validate_entity_sov_metrics(
+        metrics,
+        daily=False,
+        expected_video_id=video_id,
+        expected_dictionary_version=dictionary_version,
+    )
     return _write_entity_sov_snapshot(
         metrics,
         video_id,
@@ -74,6 +82,12 @@ def write_daily_entity_sov_snapshot(
     dictionary_version: str,
     base_dir: Path = DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
 ) -> Path:
+    validate_entity_sov_metrics(
+        metrics,
+        daily=True,
+        expected_video_id=video_id,
+        expected_dictionary_version=dictionary_version,
+    )
     return _write_entity_sov_snapshot(
         metrics,
         video_id,

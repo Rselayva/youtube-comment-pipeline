@@ -18,8 +18,8 @@ def make_metric() -> dict:
         "comment_count": 3,
         "topic_comment_count": 2,
         "comment_share_of_voice": 2 / 3,
-        "topic_comment_count_total": 3,
-        "topic_share_of_voice": 2 / 3,
+        "topic_comment_count_total": 2,
+        "topic_share_of_voice": 1.0,
         "snapshot_at": datetime(
             2026,
             8,
@@ -83,13 +83,16 @@ def test_write_topic_metrics_snapshot_replaces_previous_content(tmp_path):
     assert json.loads(saved_lines[0])["topic_id"] == "dance"
 
 
-def test_write_topic_metrics_snapshot_removes_partial_file_on_failure(
+def test_write_topic_metrics_snapshot_rejects_invalid_metrics_before_writing(
     tmp_path,
 ):
     invalid_metric = make_metric()
-    del invalid_metric["snapshot_at"]
+    invalid_metric["topic_share_of_voice"] = 0.5
 
-    with pytest.raises(KeyError, match="snapshot_at"):
+    with pytest.raises(
+        ValueError,
+        match="topic_share_of_voice does not match",
+    ):
         write_video_topic_metrics_snapshot(
             [invalid_metric],
             "video-1",
@@ -97,5 +100,6 @@ def test_write_topic_metrics_snapshot_removes_partial_file_on_failure(
             tmp_path,
         )
 
-    output_dir = tmp_path / "comment_topics_v1" / "video-1"
-    assert list(output_dir.iterdir()) == []
+    assert not (
+        tmp_path / "comment_topics_v1" / "video-1"
+    ).exists()
