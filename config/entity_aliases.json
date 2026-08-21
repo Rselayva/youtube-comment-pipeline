@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "dictionary_version": "nmixx_v1",
+  "source": "https://nmixx.jype.com/Default/Profile",
+  "source_checked_at": "2026-08-21",
+  "groups": [
+    {
+      "group_id": "nmixx",
+      "canonical_name": "NMIXX",
+      "aliases": [
+        "엔믹스"
+      ]
+    }
+  ],
+  "members": [
+    {
+      "member_id": "nmixx_lily",
+      "group_id": "nmixx",
+      "canonical_name": "LILY",
+      "aliases": [
+        "릴리"
+      ]
+    },
+    {
+      "member_id": "nmixx_haewon",
+      "group_id": "nmixx",
+      "canonical_name": "HAEWON",
+      "aliases": [
+        "해원"
+      ]
+    },
+    {
+      "member_id": "nmixx_sullyoon",
+      "group_id": "nmixx",
+      "canonical_name": "SULLYOON",
+      "aliases": [
+        "설윤"
+      ]
+    },
+    {
+      "member_id": "nmixx_bae",
+      "group_id": "nmixx",
+      "canonical_name": "BAE",
+      "aliases": [
+        "배이"
+      ]
+    },
+    {
+      "member_id": "nmixx_jiwoo",
+      "group_id": "nmixx",
+      "canonical_name": "JIWOO",
+      "aliases": [
+        "지우"
+      ]
+    },
+    {
+      "member_id": "nmixx_kyujin",
+      "group_id": "nmixx",
+      "canonical_name": "KYUJIN",
+      "aliases": [
+        "규진"
+      ]
+    }
+  ]
+}
