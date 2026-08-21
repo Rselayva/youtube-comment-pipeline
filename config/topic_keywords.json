@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "dictionary_version": "comment_topics_v1",
+  "description": "目前為開發階段使用的 Topic 關鍵詞版本，只包含 vocal、dance、visual；未來可依需求建立新版本，擴充更多 Topic 或相關關鍵詞。",
+  "topics": [
+    {
+      "topic_id": "vocal",
+      "display_name": "Vocal",
+      "keywords": [
+        "vocal",
+        "唱功",
+        "보컬"
+      ]
+    },
+    {
+      "topic_id": "dance",
+      "display_name": "Dance",
+      "keywords": [
+        "dance",
+        "舞蹈",
+        "안무"
+      ]
+    },
+    {
+      "topic_id": "visual",
+      "display_name": "Visual",
+      "keywords": [
+        "visual",
+        "顏值",
+        "비주얼"
+      ]
+    }
+  ]
+}
