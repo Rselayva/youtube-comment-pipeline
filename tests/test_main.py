@@ -131,6 +131,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "output_path=run.json" in caplog.text
 
 
+@patch("main.write_run_manifest")
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
@@ -140,6 +141,7 @@ def test_main_logs_and_reraises_downstream_failure(
     mock_ingest_comment_pages,
     mock_read_raw_comment_pages,
     mock_process_comment_pages,
+    mock_write_run_manifest,
     caplog,
 ):
     mock_ingest_video_metadata.return_value = Path("video.json")
@@ -147,16 +149,32 @@ def test_main_logs_and_reraises_downstream_failure(
     mock_read_raw_comment_pages.side_effect = ValueError(
         "invalid raw document"
     )
+    mock_write_run_manifest.return_value = Path("failed_run.json")
 
     with caplog.at_level(logging.ERROR):
         with pytest.raises(ValueError, match="invalid raw document"):
             pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
 
     mock_process_comment_pages.assert_not_called()
+    mock_write_run_manifest.assert_called_once()
+    failed_manifest = mock_write_run_manifest.call_args.args[0]
+    assert failed_manifest["status"] == "failed"
+    assert failed_manifest["failure"] == {
+        "stage": "raw_comment_read",
+        "error_type": "ValueError",
+    }
+    assert "message" not in failed_manifest["failure"]
+    assert failed_manifest["artifacts"]["raw_video_metadata"] == Path(
+        "video.json"
+    )
+    assert failed_manifest["artifacts"]["raw_comment_pages"] == [
+        Path("page_0001.json")
+    ]
     assert "pipeline_failed" in caplog.text
     assert "error_type=ValueError" in caplog.text
 
 
+@patch("main.write_run_manifest")
 @patch("main.process_comment_pages")
 @patch("main.read_raw_comment_pages")
 @patch("main.ingest_comment_pages")
@@ -166,8 +184,10 @@ def test_main_stops_before_comments_when_video_metadata_fails(
     mock_ingest_comment_pages,
     mock_read_raw_comment_pages,
     mock_process_comment_pages,
+    mock_write_run_manifest,
 ):
     mock_ingest_video_metadata.side_effect = ValueError("metadata failed")
+    mock_write_run_manifest.return_value = Path("failed_run.json")
 
     with pytest.raises(ValueError, match="metadata failed"):
         pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
@@ -175,6 +195,49 @@ def test_main_stops_before_comments_when_video_metadata_fails(
     mock_ingest_comment_pages.assert_not_called()
     mock_read_raw_comment_pages.assert_not_called()
     mock_process_comment_pages.assert_not_called()
+    failed_manifest = mock_write_run_manifest.call_args.args[0]
+    assert failed_manifest["failure"] == {
+        "stage": "video_metadata_ingestion",
+        "error_type": "ValueError",
+    }
+    assert failed_manifest["counts"] == {"raw_comment_pages": 0}
+    assert failed_manifest["artifacts"] == {
+        "raw_video_metadata": None,
+        "raw_comment_pages": [],
+    }
+
+
+@patch("main.write_run_manifest")
+@patch("main.process_comment_pages")
+@patch("main.read_raw_comment_pages")
+@patch("main.ingest_comment_pages")
+@patch("main.ingest_video_metadata")
+def test_main_preserves_original_error_when_failure_manifest_write_fails(
+    mock_ingest_video_metadata,
+    mock_ingest_comment_pages,
+    mock_read_raw_comment_pages,
+    mock_process_comment_pages,
+    mock_write_run_manifest,
+    caplog,
+):
+    mock_ingest_video_metadata.return_value = Path("video.json")
+    mock_ingest_comment_pages.return_value = [Path("page_0001.json")]
+    mock_read_raw_comment_pages.side_effect = ValueError(
+        "original pipeline failure"
+    )
+    mock_write_run_manifest.side_effect = OSError(
+        "manifest storage unavailable"
+    )
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(ValueError, match="original pipeline failure"):
+            pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
+
+    mock_process_comment_pages.assert_not_called()
+    assert mock_write_run_manifest.call_count == 1
+    assert "failure_manifest_write_failed" in caplog.text
+    assert "original_error_type=ValueError" in caplog.text
+    assert "manifest_error_type=OSError" in caplog.text
 
 
 @patch("main.main")

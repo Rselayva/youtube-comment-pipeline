@@ -131,9 +131,15 @@ data/manifests/youtube/runs/<video_id>/<UTC date>/<run timestamp>_run.json
 
 The versioned manifest records the video ID, CLI parameters, entity and Topic
 dictionary versions, dataset counts, artifact paths, timestamps, and execution
-duration. It does not contain the YouTube API key or comment text. A manifest
-is created only after all Bronze, Silver, and Gold outputs for the run have
-completed successfully.
+duration. It does not contain the YouTube API key or comment text. A successful
+manifest is created only after all Bronze, Silver, and Gold outputs for the run
+have completed successfully.
+
+Failed runs also attempt to write a manifest with the failure stage, exception
+type, and any counts or artifact paths known at that point. Exception messages
+and tracebacks are excluded from the manifest; tracebacks remain in the
+application log. If the failed manifest cannot be written, that secondary
+error is logged without replacing the original pipeline exception.
 
 ## Run the Pipeline
 

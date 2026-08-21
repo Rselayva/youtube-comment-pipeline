@@ -102,3 +102,43 @@ def test_write_run_manifest_rejects_naive_timestamps(tmp_path):
 
     with pytest.raises(ValueError, match="completed_at must be timezone-aware"):
         write_run_manifest(manifest, tmp_path)
+
+
+def test_write_run_manifest_supports_failed_status(tmp_path):
+    manifest = make_manifest()
+    manifest["status"] = "failed"
+    manifest["dictionary_versions"] = {}
+    manifest["counts"] = {"raw_comment_pages": 0}
+    manifest["artifacts"] = {
+        "raw_video_metadata": None,
+        "raw_comment_pages": [],
+    }
+    manifest["failure"] = {
+        "stage": "video_metadata_ingestion",
+        "error_type": "ValueError",
+    }
+
+    output_path = write_run_manifest(manifest, tmp_path)
+
+    saved_manifest = json.loads(output_path.read_text(encoding="utf-8"))
+    assert saved_manifest["status"] == "failed"
+    assert saved_manifest["failure"] == {
+        "stage": "video_metadata_ingestion",
+        "error_type": "ValueError",
+    }
+
+
+def test_write_run_manifest_rejects_failure_message_or_traceback(tmp_path):
+    manifest = make_manifest()
+    manifest["status"] = "failed"
+    manifest["failure"] = {
+        "stage": "transformation",
+        "error_type": "ValueError",
+        "message": "Sensitive error detail",
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="failure must contain stage and error_type",
+    ):
+        write_run_manifest(manifest, tmp_path)

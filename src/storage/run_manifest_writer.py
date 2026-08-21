@@ -25,7 +25,7 @@ def _serialize_manifest_value(value):
 
 
 def validate_run_manifest(manifest: dict) -> None:
-    required_fields = {
+    common_fields = {
         "schema_version",
         "run_id",
         "status",
@@ -38,12 +38,18 @@ def validate_run_manifest(manifest: dict) -> None:
         "counts",
         "artifacts",
     }
+    status = manifest.get("status")
+    required_fields = (
+        common_fields | {"failure"}
+        if status == "failed"
+        else common_fields
+    )
     if set(manifest) != required_fields:
         raise ValueError("Run manifest schema mismatch")
     if manifest["schema_version"] != RUN_MANIFEST_SCHEMA_VERSION:
         raise ValueError("Unsupported run manifest schema_version")
-    if manifest["status"] != "succeeded":
-        raise ValueError("Run manifest status must be succeeded")
+    if status not in {"succeeded", "failed"}:
+        raise ValueError("Run manifest status must be succeeded or failed")
 
     for field_name in ("run_id", "video_id"):
         value = manifest[field_name]
@@ -77,6 +83,20 @@ def validate_run_manifest(manifest: dict) -> None:
     ):
         if not isinstance(manifest[field_name], dict):
             raise ValueError(f"{field_name} must be an object")
+
+    if status == "failed":
+        failure = manifest["failure"]
+        if not isinstance(failure, dict) or set(failure) != {
+            "stage",
+            "error_type",
+        }:
+            raise ValueError("failure must contain stage and error_type")
+        for field_name in ("stage", "error_type"):
+            value = failure[field_name]
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    f"failure.{field_name} must be a non-empty string"
+                )
 
 
 def write_run_manifest(
