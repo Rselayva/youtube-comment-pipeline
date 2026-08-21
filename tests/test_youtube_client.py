@@ -12,6 +12,28 @@ from ingestion.youtube_client import (
     RETRYABLE_STATUS_CODES,
     get_comments,
 )
+from ingestion.youtube_errors import (
+    YouTubeCommentsDisabledError,
+    YouTubeQuotaExceededError,
+    YouTubeRateLimitError,
+    YouTubeVideoNotFoundError,
+)
+
+
+def make_error_response(status_code: int, reason: str):
+    response = Mock(status_code=status_code)
+    response.json.return_value = {
+        "error": {
+            "errors": [
+                {
+                    "reason": reason,
+                }
+            ]
+        }
+    }
+    http_error = requests.HTTPError(response=response)
+    response.raise_for_status.side_effect = http_error
+    return response, http_error
 
 
 @patch("ingestion.youtube_client.requests.get")
@@ -168,3 +190,129 @@ def test_get_comments_logs_retry_details(
     assert "Timeout" in log_message
     assert "attempt 1/3" in log_message
     assert "retrying in 1 seconds" in log_message
+
+
+@pytest.mark.parametrize(
+    (
+        "status_code",
+        "reason",
+        "expected_error_type",
+        "expected_message",
+    ),
+    [
+        (
+            403,
+            "quotaExceeded",
+            YouTubeQuotaExceededError,
+            "YouTube API quota exceeded",
+        ),
+        (
+            403,
+            "commentsDisabled",
+            YouTubeCommentsDisabledError,
+            "Comments are disabled for the requested video",
+        ),
+        (
+            404,
+            "videoNotFound",
+            YouTubeVideoNotFoundError,
+            "The requested YouTube video was not found",
+        ),
+    ],
+)
+@patch("ingestion.youtube_client.time.sleep")
+@patch("ingestion.youtube_client.requests.get")
+def test_get_comments_raises_domain_error_without_retry(
+    mock_get: Mock,
+    mock_sleep: Mock,
+    status_code: int,
+    reason: str,
+    expected_error_type: type[RuntimeError],
+    expected_message: str,
+):
+    response, _ = make_error_response(status_code, reason)
+    mock_get.return_value = response
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        with pytest.raises(expected_error_type) as raised_error:
+            get_comments(video_id="test-video-id")
+
+    assert str(raised_error.value) == expected_message
+    assert raised_error.value.video_id == "test-video-id"
+    assert raised_error.value.status_code == status_code
+    assert raised_error.value.reason == reason
+    assert "test-api-key" not in str(raised_error.value)
+    mock_get.assert_called_once()
+    mock_sleep.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("status_code", "reason"),
+    [
+        (429, "rateLimitExceeded"),
+        (403, "rateLimitExceeded"),
+    ],
+)
+@patch("ingestion.youtube_client.time.sleep")
+@patch("ingestion.youtube_client.requests.get")
+def test_get_comments_retries_rate_limit_error(
+    mock_get: Mock,
+    mock_sleep: Mock,
+    status_code: int,
+    reason: str,
+):
+    failed_response, _ = make_error_response(status_code, reason)
+    successful_response = Mock()
+    successful_response.json.return_value = {"items": []}
+    mock_get.side_effect = [failed_response, successful_response]
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        result = get_comments(video_id="test-video-id")
+
+    assert result == {"items": []}
+    assert mock_get.call_count == 2
+    mock_sleep.assert_called_once_with(INITIAL_BACKOFF_SECONDS)
+
+
+@patch("ingestion.youtube_client.time.sleep")
+@patch("ingestion.youtube_client.requests.get")
+def test_get_comments_retries_429_without_json_error_reason(
+    mock_get: Mock,
+    mock_sleep: Mock,
+):
+    failed_response = Mock(status_code=429)
+    failed_response.json.side_effect = ValueError("invalid JSON")
+    failed_response.raise_for_status.side_effect = requests.HTTPError(
+        response=failed_response,
+    )
+    successful_response = Mock()
+    successful_response.json.return_value = {"items": []}
+    mock_get.side_effect = [failed_response, successful_response]
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        result = get_comments(video_id="test-video-id")
+
+    assert result == {"items": []}
+    assert mock_get.call_count == 2
+    mock_sleep.assert_called_once_with(INITIAL_BACKOFF_SECONDS)
+
+
+@patch("ingestion.youtube_client.time.sleep")
+@patch("ingestion.youtube_client.requests.get")
+def test_get_comments_raises_rate_limit_error_after_max_attempts(
+    mock_get: Mock,
+    mock_sleep: Mock,
+):
+    mock_get.side_effect = [
+        make_error_response(429, "rateLimitExceeded")[0]
+        for _ in range(MAX_REQUEST_ATTEMPTS)
+    ]
+
+    with patch("ingestion.youtube_client.API_KEY", "test-api-key"):
+        with pytest.raises(YouTubeRateLimitError) as raised_error:
+            get_comments(video_id="test-video-id")
+
+    assert raised_error.value.status_code == 429
+    assert raised_error.value.reason == "rateLimitExceeded"
+    assert mock_get.call_count == MAX_REQUEST_ATTEMPTS
+    assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2]
