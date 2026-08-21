@@ -32,11 +32,21 @@ from storage.topic_writer import (
     DEFAULT_SILVER_TOPICS_DIR,
     write_topic_snapshot,
 )
+from storage.topic_metrics_writer import (
+    DEFAULT_GOLD_DAILY_TOPIC_METRICS_DIR,
+    DEFAULT_GOLD_VIDEO_TOPIC_METRICS_DIR,
+    write_daily_topic_metrics_snapshot,
+    write_video_topic_metrics_snapshot,
+)
 from transformation.comment_parser import (
     parse_comment_page,
     parse_utc_timestamp,
 )
 from transformation.incremental import prepare_incremental_comments
+from transformation.topic_metrics import (
+    build_daily_topic_metrics,
+    build_video_topic_metrics,
+)
 from transformation.entity_sov_metrics import (
     build_daily_entity_sov_metrics,
     build_video_entity_sov_metrics,
@@ -52,6 +62,12 @@ def process_comment_pages(
     topic_base_dir: Path = DEFAULT_SILVER_TOPICS_DIR,
     video_sov_base_dir: Path = DEFAULT_GOLD_VIDEO_ENTITY_SOV_DIR,
     daily_sov_base_dir: Path = DEFAULT_GOLD_DAILY_ENTITY_SOV_DIR,
+    video_topic_metrics_base_dir: Path = (
+        DEFAULT_GOLD_VIDEO_TOPIC_METRICS_DIR
+    ),
+    daily_topic_metrics_base_dir: Path = (
+        DEFAULT_GOLD_DAILY_TOPIC_METRICS_DIR
+    ),
     entity_aliases_path: Path = DEFAULT_ENTITY_ALIASES_PATH,
     topic_keywords_path: Path = DEFAULT_TOPIC_KEYWORDS_PATH,
 ) -> dict:
@@ -149,6 +165,32 @@ def process_comment_pages(
         dictionary_version=topic_dictionary.dictionary_version,
         base_dir=topic_base_dir,
     )
+    video_topic_metrics = build_video_topic_metrics(
+        incremental_result["merged_comments"],
+        topic_records,
+        topic_dictionary,
+    )
+    daily_topic_metrics = build_daily_topic_metrics(
+        incremental_result["merged_comments"],
+        topic_records,
+        topic_dictionary,
+    )
+    video_topic_metrics_output_path = (
+        write_video_topic_metrics_snapshot(
+            metrics=video_topic_metrics,
+            video_id=video_id,
+            dictionary_version=topic_dictionary.dictionary_version,
+            base_dir=video_topic_metrics_base_dir,
+        )
+    )
+    daily_topic_metrics_output_path = (
+        write_daily_topic_metrics_snapshot(
+            metrics=daily_topic_metrics,
+            video_id=video_id,
+            dictionary_version=topic_dictionary.dictionary_version,
+            base_dir=daily_topic_metrics_base_dir,
+        )
+    )
 
     return {
         "records_parsed": len(parsed_comments),
@@ -179,4 +221,12 @@ def process_comment_pages(
         "topic_dictionary_version": topic_dictionary.dictionary_version,
         "topic_records": len(topic_records),
         "topic_output_path": topic_output_path,
+        "video_topic_metrics_records": len(video_topic_metrics),
+        "daily_topic_metrics_records": len(daily_topic_metrics),
+        "video_topic_metrics_output_path": (
+            video_topic_metrics_output_path
+        ),
+        "daily_topic_metrics_output_path": (
+            daily_topic_metrics_output_path
+        ),
     }

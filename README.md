@@ -8,7 +8,7 @@ processes and enriches the data, and produces analytics-ready datasets.
 - Collect YouTube video and comment data
 - Build an ETL data pipeline
 - Perform data cleaning and transformation
-- Analyze sentiment and keywords
+- Classify comments into configured audience topics
 - Store data using a layered data architecture
 - Create analytics-ready datasets
 - Build data visualizations
@@ -40,8 +40,8 @@ The default workflow processes top-level comments only. It retains
 `totalReplyCount` for discussion-engagement metrics without ingesting reply
 content. Raw reply ingestion exists as an optional capability but is not
 connected to the default pipeline, since per-comment reply requests increase
-quota usage and reply conversations can distort broad sentiment or keyword
-analysis. A future opt-in mode should use `--include-replies` with a strict
+quota usage and reply conversations can distort broad audience analysis. A
+future opt-in mode should use `--include-replies` with a strict
 per-comment page and page-size limit.
 
 The core analytics roadmap prioritizes group and member share of voice in
@@ -52,12 +52,12 @@ video metadata ingestion
   -> group and member alias dictionaries
   -> comment-group and comment-member mention enrichment
   -> daily and video-level group/member share of voice
-  -> keyword and sentiment enrichment
+  -> rule-based comment topic enrichment and Gold topic metrics
 ```
 
 The existing `comment_text` field remains the source text for group/member
-mention, keyword, and sentiment processing. Reply Silver processing is
-intentionally out of scope for the default roadmap.
+mention and topic processing. Reply Silver and sentiment processing are
+intentionally out of scope for the current roadmap.
 
 ## Entity Mention Metrics
 
@@ -72,6 +72,8 @@ data/silver/youtube/comment_entity_mentions/<dictionary_version>/<video_id>/curr
 data/silver/youtube/comment_topics/<dictionary_version>/<video_id>/current_topics.jsonl
 data/gold/youtube/video_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
 data/gold/youtube/daily_entity_sov/<dictionary_version>/<video_id>/current_metrics.jsonl
+data/gold/youtube/video_topic_metrics/<dictionary_version>/<video_id>/current_metrics.jsonl
+data/gold/youtube/daily_topic_metrics/<dictionary_version>/<video_id>/current_metrics.jsonl
 ```
 
 Gold entity metrics include all configured groups and members, including zero
@@ -90,8 +92,12 @@ expanded in later dictionary versions. A top-level comment contributes at
 most one count to each matched Topic ID, even when a keyword is repeated or
 multiple keywords for the same topic are present.
 
-This rule-based topic enrichment is separate from future free-form keyword
-extraction and sentiment analysis.
+Gold Topic metrics include all configured Topic IDs, including zero-count
+rows. `comment_share_of_voice` divides a Topic's comment count by all
+top-level comments in the video or UTC day. `topic_share_of_voice` divides it
+by the total number of Topic assignments, so configured topics can be
+compared with one another. Sentiment analysis is not part of the current
+project scope.
 
 ## Run the Pipeline
 

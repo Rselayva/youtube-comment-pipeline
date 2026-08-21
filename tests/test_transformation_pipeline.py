@@ -24,6 +24,10 @@ RAW_DOCUMENTS = [
 ]
 
 
+@patch("transformation.pipeline.write_daily_topic_metrics_snapshot")
+@patch("transformation.pipeline.write_video_topic_metrics_snapshot")
+@patch("transformation.pipeline.build_daily_topic_metrics")
+@patch("transformation.pipeline.build_video_topic_metrics")
 @patch("transformation.pipeline.write_topic_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_topics")
 @patch("transformation.pipeline.load_topic_keyword_dictionary")
@@ -55,6 +59,10 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     mock_load_topic_keyword_dictionary,
     mock_enrich_comment_dataset_topics,
     mock_write_topic_snapshot,
+    mock_build_video_topic_metrics,
+    mock_build_daily_topic_metrics,
+    mock_write_video_topic_metrics_snapshot,
+    mock_write_daily_topic_metrics_snapshot,
     tmp_path,
 ):
     first_comment = {"comment_id": "comment-1"}
@@ -104,6 +112,16 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
     topic_records = [{"topic_id": "vocal"}]
     mock_enrich_comment_dataset_topics.return_value = topic_records
     mock_write_topic_snapshot.return_value = Path("topics.jsonl")
+    video_topic_metrics = [{"grain": "video-topic"}]
+    daily_topic_metrics = [{"grain": "daily-topic"}]
+    mock_build_video_topic_metrics.return_value = video_topic_metrics
+    mock_build_daily_topic_metrics.return_value = daily_topic_metrics
+    mock_write_video_topic_metrics_snapshot.return_value = Path(
+        "video_topics.jsonl"
+    )
+    mock_write_daily_topic_metrics_snapshot.return_value = Path(
+        "daily_topics.jsonl"
+    )
 
     result = process_comment_pages(
         raw_documents=RAW_DOCUMENTS,
@@ -113,6 +131,8 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         topic_base_dir=tmp_path / "topics",
         video_sov_base_dir=tmp_path / "video-sov",
         daily_sov_base_dir=tmp_path / "daily-sov",
+        video_topic_metrics_base_dir=tmp_path / "video-topic-metrics",
+        daily_topic_metrics_base_dir=tmp_path / "daily-topic-metrics",
         entity_aliases_path=tmp_path / "aliases.json",
         topic_keywords_path=tmp_path / "topic_keywords.json",
     )
@@ -203,6 +223,28 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         dictionary_version="comment_topics_v1",
         base_dir=tmp_path / "topics",
     )
+    mock_build_video_topic_metrics.assert_called_once_with(
+        [first_comment],
+        topic_records,
+        mock_load_topic_keyword_dictionary.return_value,
+    )
+    mock_build_daily_topic_metrics.assert_called_once_with(
+        [first_comment],
+        topic_records,
+        mock_load_topic_keyword_dictionary.return_value,
+    )
+    mock_write_video_topic_metrics_snapshot.assert_called_once_with(
+        metrics=video_topic_metrics,
+        video_id="video-1",
+        dictionary_version="comment_topics_v1",
+        base_dir=tmp_path / "video-topic-metrics",
+    )
+    mock_write_daily_topic_metrics_snapshot.assert_called_once_with(
+        metrics=daily_topic_metrics,
+        video_id="video-1",
+        dictionary_version="comment_topics_v1",
+        base_dir=tmp_path / "daily-topic-metrics",
+    )
     assert result == {
         "records_parsed": 2,
         "valid_records": 1,
@@ -224,9 +266,17 @@ def test_process_comment_pages_aggregates_and_writes_each_dataset_once(
         "topic_dictionary_version": "comment_topics_v1",
         "topic_records": 1,
         "topic_output_path": Path("topics.jsonl"),
+        "video_topic_metrics_records": 1,
+        "daily_topic_metrics_records": 1,
+        "video_topic_metrics_output_path": Path("video_topics.jsonl"),
+        "daily_topic_metrics_output_path": Path("daily_topics.jsonl"),
     }
 
 
+@patch("transformation.pipeline.write_daily_topic_metrics_snapshot")
+@patch("transformation.pipeline.write_video_topic_metrics_snapshot")
+@patch("transformation.pipeline.build_daily_topic_metrics")
+@patch("transformation.pipeline.build_video_topic_metrics")
 @patch("transformation.pipeline.write_topic_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_topics")
 @patch("transformation.pipeline.load_topic_keyword_dictionary")
@@ -258,6 +308,10 @@ def test_process_comment_pages_skips_empty_output_datasets(
     mock_load_topic_keyword_dictionary,
     mock_enrich_comment_dataset_topics,
     mock_write_topic_snapshot,
+    mock_build_video_topic_metrics,
+    mock_build_daily_topic_metrics,
+    mock_write_video_topic_metrics_snapshot,
+    mock_write_daily_topic_metrics_snapshot,
 ):
     mock_parse_comment_page.return_value = []
     mock_validate_comment_dataset.return_value = ([], [])
@@ -285,6 +339,14 @@ def test_process_comment_pages_skips_empty_output_datasets(
     )
     mock_enrich_comment_dataset_topics.return_value = []
     mock_write_topic_snapshot.return_value = Path("topics.jsonl")
+    mock_build_video_topic_metrics.return_value = []
+    mock_build_daily_topic_metrics.return_value = []
+    mock_write_video_topic_metrics_snapshot.return_value = Path(
+        "video_topics.jsonl"
+    )
+    mock_write_daily_topic_metrics_snapshot.return_value = Path(
+        "daily_topics.jsonl"
+    )
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
@@ -305,8 +367,14 @@ def test_process_comment_pages_skips_empty_output_datasets(
     assert result["daily_sov_records"] == 0
     assert result["topic_records"] == 0
     assert result["topic_output_path"] == Path("topics.jsonl")
+    assert result["video_topic_metrics_records"] == 0
+    assert result["daily_topic_metrics_records"] == 0
 
 
+@patch("transformation.pipeline.write_daily_topic_metrics_snapshot")
+@patch("transformation.pipeline.write_video_topic_metrics_snapshot")
+@patch("transformation.pipeline.build_daily_topic_metrics")
+@patch("transformation.pipeline.build_video_topic_metrics")
 @patch("transformation.pipeline.write_topic_snapshot")
 @patch("transformation.pipeline.enrich_comment_dataset_topics")
 @patch("transformation.pipeline.load_topic_keyword_dictionary")
@@ -338,6 +406,10 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     mock_load_topic_keyword_dictionary,
     mock_enrich_comment_dataset_topics,
     mock_write_topic_snapshot,
+    mock_build_video_topic_metrics,
+    mock_build_daily_topic_metrics,
+    mock_write_video_topic_metrics_snapshot,
+    mock_write_daily_topic_metrics_snapshot,
 ):
     unchanged_comment = {"comment_id": "comment-1"}
     mock_parse_comment_page.return_value = [unchanged_comment]
@@ -372,6 +444,18 @@ def test_process_comment_pages_skips_unchanged_silver_records(
     topic_records = [{"topic_id": "vocal"}]
     mock_enrich_comment_dataset_topics.return_value = topic_records
     mock_write_topic_snapshot.return_value = Path("topics.jsonl")
+    mock_build_video_topic_metrics.return_value = [
+        {"grain": "video-topic"}
+    ]
+    mock_build_daily_topic_metrics.return_value = [
+        {"grain": "daily-topic"}
+    ]
+    mock_write_video_topic_metrics_snapshot.return_value = Path(
+        "video_topics.jsonl"
+    )
+    mock_write_daily_topic_metrics_snapshot.return_value = Path(
+        "daily_topics.jsonl"
+    )
 
     result = process_comment_pages([RAW_DOCUMENTS[0]])
 
@@ -391,6 +475,8 @@ def test_process_comment_pages_skips_unchanged_silver_records(
         mock_load_topic_keyword_dictionary.return_value,
     )
     assert result["topic_records"] == 1
+    assert result["video_topic_metrics_records"] == 1
+    assert result["daily_topic_metrics_records"] == 1
 
 
 def test_process_comment_pages_rejects_empty_batch():
@@ -465,6 +551,8 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
     topic_dir = tmp_path / "topics"
     video_sov_dir = tmp_path / "video-sov"
     daily_sov_dir = tmp_path / "daily-sov"
+    video_topic_metrics_dir = tmp_path / "video-topic-metrics"
+    daily_topic_metrics_dir = tmp_path / "daily-topic-metrics"
 
     first_result = process_comment_pages(
         [raw_document],
@@ -474,6 +562,8 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
         topic_base_dir=topic_dir,
         video_sov_base_dir=video_sov_dir,
         daily_sov_base_dir=daily_sov_dir,
+        video_topic_metrics_base_dir=video_topic_metrics_dir,
+        daily_topic_metrics_base_dir=daily_topic_metrics_dir,
     )
     reingested_document = raw_document.copy()
     reingested_document["ingested_at"] = "2026-08-20T10:30:00+00:00"
@@ -485,6 +575,8 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
         topic_base_dir=topic_dir,
         video_sov_base_dir=video_sov_dir,
         daily_sov_base_dir=daily_sov_dir,
+        video_topic_metrics_base_dir=video_topic_metrics_dir,
+        daily_topic_metrics_base_dir=daily_topic_metrics_dir,
     )
 
     assert first_result["silver_records_written"] == 1
@@ -549,3 +641,29 @@ def test_process_comment_pages_is_idempotent_for_unchanged_reingestion(
     assert [topic["topic_count"] for topic in saved_topics] == [1, 1, 1]
     assert saved_topics[0]["matched_keywords"] == ["唱功", "보컬"]
     assert len(list(topic_dir.rglob("current_topics.jsonl"))) == 1
+    assert second_result["video_topic_metrics_records"] == 3
+    assert second_result["daily_topic_metrics_records"] == 3
+    saved_video_topic_metrics = [
+        json.loads(line)
+        for line in second_result["video_topic_metrics_output_path"]
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert [
+        metric["topic_comment_count"]
+        for metric in saved_video_topic_metrics
+    ] == [1, 1, 1]
+    assert [
+        metric["comment_share_of_voice"]
+        for metric in saved_video_topic_metrics
+    ] == [1.0, 1.0, 1.0]
+    assert [
+        metric["topic_share_of_voice"]
+        for metric in saved_video_topic_metrics
+    ] == [1 / 3, 1 / 3, 1 / 3]
+    assert len(
+        list(video_topic_metrics_dir.rglob("current_metrics.jsonl"))
+    ) == 1
+    assert len(
+        list(daily_topic_metrics_dir.rglob("current_metrics.jsonl"))
+    ) == 1

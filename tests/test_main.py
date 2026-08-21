@@ -50,6 +50,10 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
         "topic_dictionary_version": "comment_topics_v1",
         "topic_records": 3,
         "topic_output_path": Path("topics.jsonl"),
+        "video_topic_metrics_records": 3,
+        "daily_topic_metrics_records": 6,
+        "video_topic_metrics_output_path": Path("video_topics.jsonl"),
+        "daily_topic_metrics_output_path": Path("daily_topics.jsonl"),
     }
 
     with caplog.at_level(logging.INFO):
@@ -93,6 +97,10 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "topic_dictionary_version=comment_topics_v1" in caplog.text
     assert "topic_records=3" in caplog.text
     assert "topic_output_path=topics.jsonl" in caplog.text
+    assert "video_topic_metrics_records=3" in caplog.text
+    assert "daily_topic_metrics_records=6" in caplog.text
+    assert "video_topic_metrics_output_path=video_topics.jsonl" in caplog.text
+    assert "daily_topic_metrics_output_path=daily_topics.jsonl" in caplog.text
 
 
 @patch("main.process_comment_pages")

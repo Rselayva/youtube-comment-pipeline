@@ -56,7 +56,10 @@ def main(video_id: str, max_pages: int, page_size: int):
             "mention_output_path=%s video_sov_output_path=%s "
             "daily_sov_output_path=%s "
             "topic_dictionary_version=%s topic_records=%s "
-            "topic_output_path=%s",
+            "video_topic_metrics_records=%s "
+            "daily_topic_metrics_records=%s topic_output_path=%s "
+            "video_topic_metrics_output_path=%s "
+            "daily_topic_metrics_output_path=%s",
             video_id,
             transformation_result["records_parsed"],
             transformation_result["valid_records"],
@@ -77,7 +80,11 @@ def main(video_id: str, max_pages: int, page_size: int):
             transformation_result["daily_sov_output_path"],
             transformation_result["topic_dictionary_version"],
             transformation_result["topic_records"],
+            transformation_result["video_topic_metrics_records"],
+            transformation_result["daily_topic_metrics_records"],
             transformation_result["topic_output_path"],
+            transformation_result["video_topic_metrics_output_path"],
+            transformation_result["daily_topic_metrics_output_path"],
         )
     except Exception as error:
         execution_time_seconds = time.perf_counter() - start_time
