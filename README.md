@@ -99,6 +99,19 @@ by the total number of Topic assignments, so configured topics can be
 compared with one another. Sentiment analysis is not part of the current
 project scope.
 
+## SQL Analytics
+
+The platform-neutral Gold table contracts are defined in
+`sql/gold_schema.sql`. They cover video and daily entity share-of-voice plus
+video and daily Topic metrics. Column names and SQL types are tested against
+the Python output schemas to prevent contract drift.
+
+Load each versioned `current_metrics.jsonl` snapshot into its matching table
+using the JSON ingestion command provided by the chosen SQL platform. Replace
+rows for the same video and dictionary version when a newer current snapshot
+is loaded. Example ranking and trend queries are available in
+`sql/example_queries.sql`; replace `YOUR_VIDEO_ID` before running them.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:
