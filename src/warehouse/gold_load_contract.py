@@ -23,7 +23,7 @@ TABLE_DICTIONARY_TYPES = {
 @dataclass(frozen=True)
 class GoldSnapshotLoad:
     table_name: str
-    source_path: Path
+    source_uri: str
     video_id: str
     dictionary_version: str
 
@@ -58,18 +58,18 @@ def prepare_gold_snapshot_loads(
         raw_path = manifest["artifacts"].get(artifact_name)
         if not isinstance(raw_path, (str, Path)):
             raise ValueError(
-                f"Missing Gold artifact path: {artifact_name}"
+                f"Missing Gold artifact location: {artifact_name}"
             )
-        source_path = Path(raw_path)
-        if not source_path.is_file():
-            raise FileNotFoundError(
-                f"Gold artifact not found: {source_path}"
+        source_uri = str(raw_path)
+        if not source_uri.strip():
+            raise ValueError(
+                f"Missing Gold artifact location: {artifact_name}"
             )
         dictionary_type = TABLE_DICTIONARY_TYPES[table_name]
         snapshots.append(
             GoldSnapshotLoad(
                 table_name=table_name,
-                source_path=source_path,
+                source_uri=source_uri,
                 video_id=manifest["video_id"],
                 dictionary_version=dictionary_versions[dictionary_type],
             )

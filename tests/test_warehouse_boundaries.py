@@ -39,3 +39,12 @@ def test_duckdb_dependency_is_optional_and_isolated():
 
     assert "duckdb" not in shared_requirements
     assert duckdb_requirements == ["-r requirements.txt", "duckdb"]
+
+
+def test_databricks_adapter_uses_runtime_injected_spark_only():
+    imported_modules = imported_top_level_modules(
+        Path("src/warehouse/databricks_adapter.py")
+    )
+
+    assert "pyspark" not in imported_modules
+    assert "databricks" not in imported_modules

@@ -286,7 +286,7 @@ def test_duckdb_adapter_rejects_undeclared_table_before_connecting(
     adapter = DuckDBGoldAdapter(database_path, SCHEMA_PATH)
     snapshot = GoldSnapshotLoad(
         table_name="undeclared_table",
-        source_path=source_path,
+        source_uri=str(source_path),
         video_id=VIDEO_ID,
         dictionary_version=ENTITY_VERSION,
     )

@@ -196,6 +196,41 @@ DuckDB connection, transaction, JSON reader, and file-path behavior are
 isolated in `warehouse.duckdb_adapter`. A Databricks adapter can implement the
 same `GoldWarehouseAdapter` protocol without importing or packaging DuckDB.
 
+### Load Gold Snapshots into Databricks
+
+Databricks provides the Spark session at runtime, so the shared project does
+not install or import PySpark. Call the Databricks entry function from a
+notebook or Python Workflow task with deployment-specific settings:
+
+```python
+from pathlib import Path
+
+from load_gold_databricks import load_gold_to_databricks
+
+result = load_gold_to_databricks(
+    video_id="aFrQIJ5cbRc",
+    spark=spark,
+    catalog="audience_analytics",
+    schema="gold",
+    manifests_dir=Path(
+        "/Volumes/audience_analytics/operations/run_manifests"
+    ),
+)
+```
+
+Catalog, schema, Spark session, and manifest location are runtime inputs; they
+are not hardcoded in the adapter. Artifact locations stored in the manifest
+can use Unity Catalog Volume paths or another location readable by Spark. The
+runtime principal needs the corresponding Unity Catalog usage, table, and
+storage permissions.
+
+Each table uses a typed JSON schema, validates `video_id` and
+`dictionary_version`, and writes Delta with `replaceWhere`. All sources are
+preflighted before writes begin. Each Delta table replacement is atomic, but
+the four separate table writes are not a cross-table transaction. A later
+published-run audit layer is required for guaranteed cross-table snapshot
+consistency.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:

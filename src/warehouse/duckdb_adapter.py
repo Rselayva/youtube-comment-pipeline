@@ -28,7 +28,8 @@ class DuckDBGoldAdapter:
         snapshot: GoldSnapshotLoad,
     ) -> int:
         stage_name = f"staged_{snapshot.table_name}"
-        if snapshot.source_path.stat().st_size == 0:
+        source_path = Path(snapshot.source_uri)
+        if source_path.stat().st_size == 0:
             connection.execute(
                 f"CREATE OR REPLACE TEMP TABLE {stage_name} AS "
                 f"SELECT * FROM {snapshot.table_name} WHERE FALSE"
@@ -38,7 +39,7 @@ class DuckDBGoldAdapter:
                 f"CREATE OR REPLACE TEMP TABLE {stage_name} AS "
                 "SELECT * FROM read_json(?, "
                 "format = 'newline_delimited')",
-                [str(snapshot.source_path.resolve())],
+                [str(source_path.resolve())],
             )
 
         row_count, invalid_lineage_count = connection.execute(
@@ -84,6 +85,12 @@ class DuckDBGoldAdapter:
                 "Unsupported Gold table names: "
                 f"{sorted(unsupported_tables)}"
             )
+        for snapshot in snapshots:
+            source_path = Path(snapshot.source_uri)
+            if not source_path.is_file():
+                raise FileNotFoundError(
+                    f"Gold artifact not found: {source_path}"
+                )
         if not self.schema_path.is_file():
             raise FileNotFoundError(
                 f"Gold schema not found: {self.schema_path}"
