@@ -55,3 +55,20 @@ def read_latest_run_manifest(
         raise ValueError("Manifest video_id does not match its directory")
 
     return manifest
+
+
+def read_latest_successful_run_manifest(
+    video_id: str,
+    base_dir: Path = DEFAULT_RUN_MANIFESTS_DIR,
+) -> dict | None:
+    _validate_video_id(video_id)
+    paths = list_run_manifest_files(video_id, base_dir)
+
+    for path in reversed(paths):
+        manifest = read_run_manifest(path)
+        if manifest["video_id"] != video_id:
+            raise ValueError("Manifest video_id does not match its directory")
+        if manifest["status"] == "succeeded":
+            return manifest
+
+    return None

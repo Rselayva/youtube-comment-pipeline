@@ -6,6 +6,7 @@ import pytest
 from storage.run_manifest_reader import (
     list_run_manifest_files,
     read_latest_run_manifest,
+    read_latest_successful_run_manifest,
     read_run_manifest,
 )
 from storage.run_manifest_writer import write_run_manifest
@@ -62,6 +63,59 @@ def test_list_and_read_latest_run_manifest_use_timestamped_paths(tmp_path):
 
 def test_read_latest_run_manifest_returns_none_without_history(tmp_path):
     assert read_latest_run_manifest(VIDEO_ID, tmp_path) is None
+
+
+def test_read_latest_successful_run_manifest_skips_newer_failed_runs(
+    tmp_path,
+):
+    older_success = make_manifest(
+        datetime(2026, 8, 20, 9, 0, tzinfo=timezone.utc)
+    )
+    newer_failure = make_manifest(
+        datetime(2026, 8, 21, 9, 0, tzinfo=timezone.utc),
+        status="failed",
+    )
+    write_run_manifest(older_success, tmp_path)
+    write_run_manifest(newer_failure, tmp_path)
+
+    latest_success = read_latest_successful_run_manifest(
+        VIDEO_ID,
+        tmp_path,
+    )
+
+    assert latest_success["run_id"] == older_success["run_id"]
+    assert latest_success["status"] == "succeeded"
+    assert latest_success["started_at"] == older_success["started_at"]
+
+
+def test_read_latest_successful_run_manifest_returns_none_without_success(
+    tmp_path,
+):
+    failed = make_manifest(
+        datetime(2026, 8, 21, 9, 0, tzinfo=timezone.utc),
+        status="failed",
+    )
+    write_run_manifest(failed, tmp_path)
+
+    assert (
+        read_latest_successful_run_manifest(VIDEO_ID, tmp_path) is None
+    )
+
+
+def test_read_latest_successful_run_manifest_rejects_corrupt_history(
+    tmp_path,
+):
+    successful = make_manifest(
+        datetime(2026, 8, 20, 9, 0, tzinfo=timezone.utc)
+    )
+    write_run_manifest(successful, tmp_path)
+    corrupt_dir = tmp_path / VIDEO_ID / "2026-08-21"
+    corrupt_dir.mkdir(parents=True)
+    corrupt_path = corrupt_dir / "20260821T090000000000Z_run.json"
+    corrupt_path.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="schema mismatch"):
+        read_latest_successful_run_manifest(VIDEO_ID, tmp_path)
 
 
 def test_read_run_manifest_rejects_invalid_schema(tmp_path):
