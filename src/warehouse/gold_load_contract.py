@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -24,6 +25,8 @@ TABLE_DICTIONARY_TYPES = {
 class GoldSnapshotLoad:
     table_name: str
     source_uri: str
+    run_id: str
+    run_started_at: datetime
     video_id: str
     dictionary_version: str
 
@@ -70,6 +73,8 @@ def prepare_gold_snapshot_loads(
             GoldSnapshotLoad(
                 table_name=table_name,
                 source_uri=source_uri,
+                run_id=manifest["run_id"],
+                run_started_at=manifest["started_at"],
                 video_id=manifest["video_id"],
                 dictionary_version=dictionary_versions[dictionary_type],
             )

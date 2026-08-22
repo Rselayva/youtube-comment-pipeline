@@ -287,6 +287,15 @@ def test_duckdb_adapter_rejects_undeclared_table_before_connecting(
     snapshot = GoldSnapshotLoad(
         table_name="undeclared_table",
         source_uri=str(source_path),
+        run_id=f"{VIDEO_ID}_20260821T120000000000Z",
+        run_started_at=datetime(
+            2026,
+            8,
+            21,
+            12,
+            0,
+            tzinfo=timezone.utc,
+        ),
         video_id=VIDEO_ID,
         dictionary_version=ENTITY_VERSION,
     )

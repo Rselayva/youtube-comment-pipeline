@@ -48,6 +48,7 @@ def test_prepare_gold_snapshot_loads_builds_backend_neutral_contract(
         GOLD_TABLE_ARTIFACTS
     )
     assert snapshots[0].video_id == VIDEO_ID
+    assert snapshots[0].run_id == make_manifest(tmp_path)["run_id"]
     assert snapshots[0].source_uri.endswith(
         "gold_video_entity_sov.jsonl"
     )

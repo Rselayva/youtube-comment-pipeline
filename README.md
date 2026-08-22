@@ -224,12 +224,18 @@ can use Unity Catalog Volume paths or another location readable by Spark. The
 runtime principal needs the corresponding Unity Catalog usage, table, and
 storage permissions.
 
-Each table uses a typed JSON schema, validates `video_id` and
-`dictionary_version`, and writes Delta with `replaceWhere`. All sources are
-preflighted before writes begin. Each Delta table replacement is atomic, but
-the four separate table writes are not a cross-table transaction. A later
-published-run audit layer is required for guaranteed cross-table snapshot
-consistency.
+Each source uses a typed JSON schema and validates `video_id` and
+`dictionary_version` before writes begin. Databricks stores immutable,
+run-versioned rows in `gold_*_history` Delta tables with `load_run_id` and
+`loaded_at`. Rerunning an unpublished run replaces only that run ID; rerunning
+an already published run skips history writes.
+
+After all four history tables succeed, the adapter upserts one row into
+`gold_load_publications`. The original `gold_*` names are Unity Catalog views
+that expose only the newest published `run_started_at` for each video. A
+partial or failed load can leave unpublished history rows, but those rows are
+not visible through the current views. Retention and cleanup of old history
+versions remain a later operational task.
 
 ## Run the Pipeline
 
