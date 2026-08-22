@@ -24,6 +24,20 @@ processes and enriches the data, and produces analytics-ready datasets.
 - Docker
 - Power BI
 
+## Install Dependencies
+
+Install only the shared pipeline dependencies for a platform-neutral runtime:
+
+```bash
+pip install -r requirements.txt
+```
+
+For local DuckDB loading, install the optional adapter dependencies instead:
+
+```bash
+pip install -r requirements-duckdb.txt
+```
+
 ## Architecture
 
 ```text
@@ -163,8 +177,8 @@ Load all four Gold snapshots from the latest successful run manifest into a
 persistent local DuckDB database:
 
 ```bash
-python src/load_gold.py aFrQIJ5cbRc
-python src/load_gold.py aFrQIJ5cbRc --database data/warehouse/custom.duckdb
+python src/load_gold_duckdb.py aFrQIJ5cbRc
+python src/load_gold_duckdb.py aFrQIJ5cbRc --database data/warehouse/custom.duckdb
 ```
 
 The default database is `data/warehouse/youtube_analytics.duckdb`. The loader
@@ -175,6 +189,12 @@ All four tables are replaced in one transaction for the same `video_id` and
 table fails, the transaction is rolled back and the previous database state is
 preserved. Empty JSONL snapshots intentionally replace prior rows with zero
 rows.
+
+The manifest validation and load orchestration live in the platform-neutral
+`warehouse.gold_load_contract` and `warehouse.gold_load_service` modules.
+DuckDB connection, transaction, JSON reader, and file-path behavior are
+isolated in `warehouse.duckdb_adapter`. A Databricks adapter can implement the
+same `GoldWarehouseAdapter` protocol without importing or packaging DuckDB.
 
 ## Run the Pipeline
 

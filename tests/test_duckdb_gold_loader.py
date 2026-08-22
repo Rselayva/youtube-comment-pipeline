@@ -2,10 +2,15 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-import duckdb
 import pytest
 
-from storage.duckdb_gold_loader import load_gold_snapshots
+duckdb = pytest.importorskip("duckdb")
+
+from warehouse.duckdb_adapter import (
+    DuckDBGoldAdapter,
+    load_gold_snapshots,
+)
+from warehouse.gold_load_contract import GoldSnapshotLoad
 
 
 VIDEO_ID = "aFrQIJ5cbRc"
@@ -268,5 +273,25 @@ def test_load_gold_snapshots_rejects_missing_schema_before_connecting(
             database_path,
             tmp_path / "missing_schema.sql",
         )
+
+    assert not database_path.exists()
+
+
+def test_duckdb_adapter_rejects_undeclared_table_before_connecting(
+    tmp_path,
+):
+    source_path = tmp_path / "snapshot.jsonl"
+    source_path.write_text("", encoding="utf-8")
+    database_path = tmp_path / "warehouse.duckdb"
+    adapter = DuckDBGoldAdapter(database_path, SCHEMA_PATH)
+    snapshot = GoldSnapshotLoad(
+        table_name="undeclared_table",
+        source_path=source_path,
+        video_id=VIDEO_ID,
+        dictionary_version=ENTITY_VERSION,
+    )
+
+    with pytest.raises(ValueError, match="Unsupported Gold table names"):
+        adapter.load_snapshots((snapshot,))
 
     assert not database_path.exists()
