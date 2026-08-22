@@ -72,3 +72,27 @@ def read_latest_successful_run_manifest(
             return manifest
 
     return None
+
+
+def read_run_manifest_history(
+    video_id: str,
+    limit: int,
+    base_dir: Path = DEFAULT_RUN_MANIFESTS_DIR,
+) -> list[dict]:
+    _validate_video_id(video_id)
+    if (
+        isinstance(limit, bool)
+        or not isinstance(limit, int)
+        or not 1 <= limit <= 100
+    ):
+        raise ValueError("history limit must be an integer from 1 to 100")
+
+    paths = list_run_manifest_files(video_id, base_dir)
+    manifests = []
+    for path in reversed(paths[-limit:]):
+        manifest = read_run_manifest(path)
+        if manifest["video_id"] != video_id:
+            raise ValueError("Manifest video_id does not match its directory")
+        manifests.append(manifest)
+
+    return manifests

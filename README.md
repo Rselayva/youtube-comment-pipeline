@@ -141,18 +141,21 @@ and tracebacks are excluded from the manifest; tracebacks remain in the
 application log. If the failed manifest cannot be written, that secondary
 error is logged without replacing the original pipeline exception.
 
-Show the latest run summary for a video without calling the YouTube API:
+Show run summaries for a video without calling the YouTube API:
 
 ```bash
 python src/run_summary.py aFrQIJ5cbRc
 python src/run_summary.py "https://www.youtube.com/watch?v=aFrQIJ5cbRc"
+python src/run_summary.py aFrQIJ5cbRc --latest-successful
+python src/run_summary.py aFrQIJ5cbRc --history 10
 ```
 
 The read-only command validates the manifest schema and prints JSON containing
-the latest status, timestamps, parameters, dictionary versions, counts,
-artifact paths, and failure stage/type when applicable. Latest-run selection
-uses the UTC timestamped manifest path rather than filesystem modification
-time.
+status, timestamps, parameters, dictionary versions, counts, artifact paths,
+and failure stage/type when applicable. By default it returns the latest run;
+`--latest-successful` scans backward to the most recent succeeded run, and
+`--history N` returns 1–100 runs in newest-first order. Selection uses the UTC
+timestamped manifest path rather than filesystem modification time.
 
 ## Run the Pipeline
 

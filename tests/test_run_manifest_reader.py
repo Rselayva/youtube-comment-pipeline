@@ -7,6 +7,7 @@ from storage.run_manifest_reader import (
     list_run_manifest_files,
     read_latest_run_manifest,
     read_latest_successful_run_manifest,
+    read_run_manifest_history,
     read_run_manifest,
 )
 from storage.run_manifest_writer import write_run_manifest
@@ -116,6 +117,60 @@ def test_read_latest_successful_run_manifest_rejects_corrupt_history(
 
     with pytest.raises(ValueError, match="schema mismatch"):
         read_latest_successful_run_manifest(VIDEO_ID, tmp_path)
+
+
+def test_read_run_manifest_history_returns_limited_newest_first(tmp_path):
+    manifests = [
+        make_manifest(
+            datetime(2026, 8, day, 9, 0, tzinfo=timezone.utc),
+            status="failed" if day == 21 else "succeeded",
+        )
+        for day in (20, 21, 22)
+    ]
+    for manifest in manifests:
+        write_run_manifest(manifest, tmp_path)
+
+    history = read_run_manifest_history(VIDEO_ID, 2, tmp_path)
+
+    assert [manifest["run_id"] for manifest in history] == [
+        manifests[2]["run_id"],
+        manifests[1]["run_id"],
+    ]
+
+
+def test_read_run_manifest_history_returns_empty_list_without_history(
+    tmp_path,
+):
+    assert read_run_manifest_history(VIDEO_ID, 10, tmp_path) == []
+
+
+@pytest.mark.parametrize("limit", [0, 101, True, 1.5])
+def test_read_run_manifest_history_rejects_invalid_limit(tmp_path, limit):
+    with pytest.raises(
+        ValueError,
+        match="history limit must be an integer from 1 to 100",
+    ):
+        read_run_manifest_history(VIDEO_ID, limit, tmp_path)
+
+
+def test_read_run_manifest_history_rejects_directory_video_mismatch(
+    tmp_path,
+):
+    manifest = make_manifest(
+        datetime(2026, 8, 21, 9, 0, tzinfo=timezone.utc)
+    )
+    source_path = write_run_manifest(manifest, tmp_path / "source")
+    different_video_id = "bbbbbbbbbbb"
+    target_dir = tmp_path / different_video_id / "2026-08-21"
+    target_dir.mkdir(parents=True)
+    target_path = target_dir / source_path.name
+    target_path.write_bytes(source_path.read_bytes())
+
+    with pytest.raises(
+        ValueError,
+        match="video_id does not match its directory",
+    ):
+        read_run_manifest_history(different_video_id, 10, tmp_path)
 
 
 def test_read_run_manifest_rejects_invalid_schema(tmp_path):
