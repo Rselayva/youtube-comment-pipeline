@@ -157,6 +157,25 @@ and failure stage/type when applicable. By default it returns the latest run;
 `--history N` returns 1–100 runs in newest-first order. Selection uses the UTC
 timestamped manifest path rather than filesystem modification time.
 
+### Load Gold Snapshots into DuckDB
+
+Load all four Gold snapshots from the latest successful run manifest into a
+persistent local DuckDB database:
+
+```bash
+python src/load_gold.py aFrQIJ5cbRc
+python src/load_gold.py aFrQIJ5cbRc --database data/warehouse/custom.duckdb
+```
+
+The default database is `data/warehouse/youtube_analytics.duckdb`. The loader
+validates the success manifest, artifact paths, manifest-to-row video and
+dictionary lineage, and the typed tables declared in `sql/gold_schema.sql`.
+All four tables are replaced in one transaction for the same `video_id` and
+`dictionary_version`, so rerunning the same snapshot is idempotent. If any
+table fails, the transaction is rolled back and the previous database state is
+preserved. Empty JSONL snapshots intentionally replace prior rows with zero
+rows.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:
