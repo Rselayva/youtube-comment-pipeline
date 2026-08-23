@@ -1,5 +1,7 @@
 # YouTube Comment Pipeline
 
+[![CI](https://github.com/Rselayva/youtube-comment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Rselayva/youtube-comment-pipeline/actions/workflows/ci.yml)
+
 An end-to-end data engineering project that collects YouTube comments,
 processes and enriches the data, and produces analytics-ready datasets.
 
@@ -247,6 +249,16 @@ run `databricks/run_pipeline_notebook.py`, and schedule the end-to-end pipeline.
 The notebook maps a runtime catalog/schema/Volume to the shared
 `PipelineStorage` layout; no Databricks catalog or Volume is hardcoded in the
 pipeline modules.
+
+Run `databricks/validate_pipeline_notebook.py` after an end-to-end execution
+to reconcile the latest publication audit counts with all four immutable
+history tables and current views. The same notebook can be a dependent second
+task in a scheduled Workflow.
+
+Every push to `main` and every pull request runs the complete Python 3.12 test
+suite in GitHub Actions. CI installs `requirements-duckdb.txt` so both the
+platform-neutral pipeline and the isolated local warehouse adapter are tested;
+it does not require YouTube or Databricks credentials.
 
 ## Run the Pipeline
 

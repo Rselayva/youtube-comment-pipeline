@@ -83,15 +83,36 @@ Silver, rejected, Gold JSONL, and manifests are stored below:
 Delta history tables, publication audit table, and current views are created
 in `rselayva_dev.youtube_comment_pipeline_dev`.
 
-## 4. Turn the notebook into a Workflow
+## 4. Reconcile the published run
+
+Open `databricks/validate_pipeline_notebook.py`, attach the same compute, and
+set:
+
+| Widget | Value |
+| --- | --- |
+| `catalog` | `rselayva_dev` |
+| `schema` | `youtube_comment_pipeline_dev` |
+| `video_id` | The same 11-character video ID |
+
+Choose **Run all**. A passing result confirms that the latest publication
+audit row counts match both its immutable history rows and all four current
+views. Zero rows are valid when a video has no configured entity or topic
+matches; mismatched counts are not.
+
+## 5. Turn the notebooks into a Workflow
 
 After the manual run succeeds:
 
-1. In the notebook, select **Schedule** in the upper-right.
-2. Create a schedule and choose serverless or Unity Catalog-enabled compute.
-3. Under **More options > Parameters**, add the same widget keys and values.
-4. Keep `video_id` as a runtime parameter; do not add the API key itself.
-5. Add failure notification email, then create the job.
+1. In **Workflows**, create a Job with a notebook task named `run_pipeline`
+   that uses `databricks/run_pipeline_notebook.py`.
+2. Choose serverless or Unity Catalog-enabled compute and add the same widget
+   keys and values under task parameters.
+3. Add a second notebook task named `validate_publication` using
+   `databricks/validate_pipeline_notebook.py`.
+4. Make `validate_publication` depend on successful completion of
+   `run_pipeline`; pass `catalog`, `schema`, and `video_id` to it.
+5. Keep `video_id` as a runtime parameter; do not add the API key itself.
+6. Add a schedule and failure notification email, then save the Job.
 
 Notebook task parameters are passed to matching `dbutils.widgets` names. A
 manual **Run now with different settings** can override them without editing
