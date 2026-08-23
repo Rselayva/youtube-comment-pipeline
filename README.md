@@ -237,6 +237,10 @@ partial or failed load can leave unpublished history rows, but those rows are
 not visible through the current views. Retention and cleanup of old history
 versions remain a later operational task.
 
+For a real Unity Catalog and Delta smoke test using anonymous fixtures, follow
+[`docs/DATABRICKS_SMOKE_TEST.md`](docs/DATABRICKS_SMOKE_TEST.md) and run
+`databricks/smoke_test_notebook.py` from a Databricks Git folder.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:
