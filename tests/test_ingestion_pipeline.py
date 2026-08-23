@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 from ingestion.pipeline import ingest_comment_pages
+from storage.raw_writer import DEFAULT_RAW_COMMENTS_DIR
 
 
 INGESTED_AT = datetime(2026, 8, 19, 8, 0, tzinfo=timezone.utc)
@@ -36,6 +37,7 @@ def test_ingest_comment_pages_stops_when_there_is_no_next_page(
         video_id="test-video-id",
         page_number=1,
         ingested_at=INGESTED_AT,
+        base_dir=DEFAULT_RAW_COMMENTS_DIR,
     )
 
 
@@ -84,11 +86,13 @@ def test_ingest_comment_pages_stops_at_max_pages(
             video_id="test-video-id",
             page_number=1,
             ingested_at=INGESTED_AT,
+            base_dir=DEFAULT_RAW_COMMENTS_DIR,
         ),
         call(
             raw_response=second_page,
             video_id="test-video-id",
             page_number=2,
             ingested_at=INGESTED_AT,
+            base_dir=DEFAULT_RAW_COMMENTS_DIR,
         ),
     ]

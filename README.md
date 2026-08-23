@@ -241,6 +241,13 @@ For a real Unity Catalog and Delta smoke test using anonymous fixtures, follow
 [`docs/DATABRICKS_SMOKE_TEST.md`](docs/DATABRICKS_SMOKE_TEST.md) and run
 `databricks/smoke_test_notebook.py` from a Databricks Git folder.
 
+After the smoke test passes, follow
+[`docs/DATABRICKS_WORKFLOW.md`](docs/DATABRICKS_WORKFLOW.md) to create a Secret,
+run `databricks/run_pipeline_notebook.py`, and schedule the end-to-end pipeline.
+The notebook maps a runtime catalog/schema/Volume to the shared
+`PipelineStorage` layout; no Databricks catalog or Volume is hardcoded in the
+pipeline modules.
+
 ## Run the Pipeline
 
 Create a `.env` file with a YouTube Data API key:

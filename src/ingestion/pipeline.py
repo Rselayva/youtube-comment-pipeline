@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ingestion.youtube_client import get_comments
 from storage.raw_writer import write_raw_comment_page
+from storage.raw_writer import DEFAULT_RAW_COMMENTS_DIR
 
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ def ingest_comment_pages(
     max_pages: int,
     page_size: int,
     ingested_at: datetime,
+    raw_comments_dir: Path = DEFAULT_RAW_COMMENTS_DIR,
 ) -> list[Path]:
     page_token = None
     raw_output_paths = []
@@ -38,6 +40,7 @@ def ingest_comment_pages(
             video_id=video_id,
             page_number=page_number,
             ingested_at=ingested_at,
+            base_dir=raw_comments_dir,
         )
         logger.info(
             "raw_page_written video_id=%s page_number=%s output_path=%s",

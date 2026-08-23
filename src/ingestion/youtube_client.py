@@ -3,7 +3,11 @@ import os
 import time
 
 import requests
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # Databricks injects secrets without a .env file.
+    load_dotenv = None
 
 from ingestion.youtube_errors import (
     YouTubeAPIError,
@@ -15,7 +19,8 @@ from ingestion.youtube_errors import (
 )
 
 
-load_dotenv()
+if load_dotenv is not None:
+    load_dotenv()
 
 
 logger = logging.getLogger(__name__)

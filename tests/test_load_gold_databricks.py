@@ -1,7 +1,10 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from load_gold_databricks import load_gold_to_databricks
+from load_gold_databricks import (
+    load_gold_manifest_to_databricks,
+    load_gold_to_databricks,
+)
 
 
 VIDEO_ID = "aFrQIJ5cbRc"
@@ -47,3 +50,38 @@ def test_load_gold_to_databricks_uses_external_runtime_configuration(
         manifests_dir=manifests_dir,
     )
     assert result == {"video_id": VIDEO_ID}
+
+
+@patch("load_gold_databricks.load_gold_from_manifest_file")
+@patch("load_gold_databricks.DatabricksGoldAdapter")
+@patch("load_gold_databricks.DatabricksGoldConfig")
+def test_load_gold_manifest_to_databricks_uses_exact_manifest(
+    mock_config_class,
+    mock_adapter_class,
+    mock_load_gold_from_manifest_file,
+):
+    spark = Mock()
+    config = Mock()
+    adapter = Mock()
+    manifest_path = Path("/Volumes/audience/prod/run.json")
+    mock_config_class.return_value = config
+    mock_adapter_class.return_value = adapter
+    mock_load_gold_from_manifest_file.return_value = {"run_id": "run-1"}
+
+    result = load_gold_manifest_to_databricks(
+        manifest_path=manifest_path,
+        spark=spark,
+        catalog="audience",
+        schema="gold",
+    )
+
+    mock_config_class.assert_called_once_with(
+        catalog="audience",
+        schema="gold",
+    )
+    mock_adapter_class.assert_called_once_with(spark=spark, config=config)
+    mock_load_gold_from_manifest_file.assert_called_once_with(
+        manifest_path=manifest_path,
+        adapter=adapter,
+    )
+    assert result == {"run_id": "run-1"}

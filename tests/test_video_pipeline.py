@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from ingestion.video_pipeline import ingest_video_metadata
+from storage.raw_video_writer import DEFAULT_RAW_VIDEOS_DIR
 
 
 @patch("ingestion.video_pipeline.write_raw_video_metadata")
@@ -28,4 +29,5 @@ def test_ingest_video_metadata_fetches_and_writes_raw_response(
         raw_response=raw_response,
         video_id="video-1",
         ingested_at=ingested_at,
+        base_dir=DEFAULT_RAW_VIDEOS_DIR,
     )

@@ -5,6 +5,7 @@ from unittest.mock import ANY, patch
 import pytest
 
 import main as pipeline_main
+from storage.pipeline_storage import DEFAULT_PIPELINE_STORAGE
 from video_input import PipelineArguments
 
 
@@ -60,13 +61,14 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     mock_write_run_manifest.return_value = Path("run.json")
 
     with caplog.at_level(logging.INFO):
-        pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
+        result = pipeline_main.main(VIDEO_ID, MAX_PAGES, PAGE_SIZE)
 
     mock_ingest_comment_pages.assert_called_once_with(
         video_id=VIDEO_ID,
         max_pages=MAX_PAGES,
         page_size=PAGE_SIZE,
         ingested_at=ANY,
+        raw_comments_dir=DEFAULT_PIPELINE_STORAGE.raw_comments_dir,
     )
     video_ingested_at = mock_ingest_video_metadata.call_args.kwargs[
         "ingested_at"
@@ -78,10 +80,34 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     mock_ingest_video_metadata.assert_called_once_with(
         video_id=VIDEO_ID,
         ingested_at=ANY,
+        raw_videos_dir=DEFAULT_PIPELINE_STORAGE.raw_videos_dir,
     )
     mock_read_raw_comment_pages.assert_called_once_with(raw_paths)
-    mock_process_comment_pages.assert_called_once_with(raw_documents)
+    mock_process_comment_pages.assert_called_once_with(
+        raw_documents,
+        silver_base_dir=DEFAULT_PIPELINE_STORAGE.silver_comments_dir,
+        rejected_base_dir=(
+            DEFAULT_PIPELINE_STORAGE.rejected_comments_dir
+        ),
+        mention_base_dir=DEFAULT_PIPELINE_STORAGE.silver_mentions_dir,
+        topic_base_dir=DEFAULT_PIPELINE_STORAGE.silver_topics_dir,
+        video_sov_base_dir=(
+            DEFAULT_PIPELINE_STORAGE.gold_video_entity_sov_dir
+        ),
+        daily_sov_base_dir=(
+            DEFAULT_PIPELINE_STORAGE.gold_daily_entity_sov_dir
+        ),
+        video_topic_metrics_base_dir=(
+            DEFAULT_PIPELINE_STORAGE.gold_video_topic_metrics_dir
+        ),
+        daily_topic_metrics_base_dir=(
+            DEFAULT_PIPELINE_STORAGE.gold_daily_topic_metrics_dir
+        ),
+    )
     mock_write_run_manifest.assert_called_once()
+    assert mock_write_run_manifest.call_args.kwargs == {
+        "base_dir": DEFAULT_PIPELINE_STORAGE.run_manifests_dir,
+    }
     run_manifest = mock_write_run_manifest.call_args.args[0]
     assert run_manifest["schema_version"] == 1
     assert run_manifest["status"] == "succeeded"
@@ -129,6 +155,7 @@ def test_main_runs_ingestion_read_and_transformation_in_order(
     assert "daily_topic_metrics_output_path=daily_topics.jsonl" in caplog.text
     assert "run_manifest_complete" in caplog.text
     assert "output_path=run.json" in caplog.text
+    assert result == Path("run.json")
 
 
 @patch("main.write_run_manifest")

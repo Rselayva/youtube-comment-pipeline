@@ -2,6 +2,7 @@ from pathlib import Path
 
 from storage.run_manifest_reader import (
     read_latest_successful_run_manifest,
+    read_run_manifest,
 )
 from storage.run_manifest_writer import DEFAULT_RUN_MANIFESTS_DIR
 from warehouse.gold_load_contract import (
@@ -27,5 +28,18 @@ def load_latest_successful_gold(
     return {
         "run_id": manifest["run_id"],
         "video_id": video_id,
+        "loaded_rows": load_gold_manifest(manifest, adapter),
+    }
+
+
+def load_gold_from_manifest_file(
+    manifest_path: Path,
+    adapter: GoldWarehouseAdapter,
+) -> dict:
+    """Load the exact successful run produced by an orchestrator."""
+    manifest = read_run_manifest(manifest_path)
+    return {
+        "run_id": manifest["run_id"],
+        "video_id": manifest["video_id"],
         "loaded_rows": load_gold_manifest(manifest, adapter),
     }

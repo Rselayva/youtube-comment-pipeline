@@ -3,7 +3,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from warehouse.gold_load_service import load_latest_successful_gold
+from warehouse.gold_load_service import (
+    load_gold_from_manifest_file,
+    load_latest_successful_gold,
+)
 
 
 VIDEO_ID = "aFrQIJ5cbRc"
@@ -64,3 +67,26 @@ def test_load_latest_successful_gold_rejects_missing_successful_run(
             Mock(),
             tmp_path / "manifests",
         )
+
+
+@patch("warehouse.gold_load_service.load_gold_manifest")
+@patch("warehouse.gold_load_service.read_run_manifest")
+def test_load_gold_from_manifest_file_loads_exact_run(
+    mock_read_run_manifest,
+    mock_load_gold_manifest,
+):
+    manifest_path = Path("/Volumes/catalog/schema/volume/run.json")
+    manifest = {"run_id": "run-123", "video_id": VIDEO_ID}
+    adapter = Mock()
+    mock_read_run_manifest.return_value = manifest
+    mock_load_gold_manifest.return_value = {"table": 4}
+
+    result = load_gold_from_manifest_file(manifest_path, adapter)
+
+    mock_read_run_manifest.assert_called_once_with(manifest_path)
+    mock_load_gold_manifest.assert_called_once_with(manifest, adapter)
+    assert result == {
+        "run_id": "run-123",
+        "video_id": VIDEO_ID,
+        "loaded_rows": {"table": 4},
+    }

@@ -1,10 +1,15 @@
 import logging
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from ingestion.pipeline import ingest_comment_pages
 from ingestion.video_pipeline import ingest_video_metadata
 from storage.raw_reader import read_raw_comment_pages
+from storage.pipeline_storage import (
+    DEFAULT_PIPELINE_STORAGE,
+    PipelineStorage,
+)
 from storage.run_manifest_writer import (
     RUN_MANIFEST_SCHEMA_VERSION,
     write_run_manifest,
@@ -230,7 +235,12 @@ def build_failed_run_manifest(
     }
 
 
-def main(video_id: str, max_pages: int, page_size: int):
+def main(
+    video_id: str,
+    max_pages: int,
+    page_size: int,
+    storage: PipelineStorage = DEFAULT_PIPELINE_STORAGE,
+) -> Path:
     start_time = time.perf_counter()
     ingested_at = datetime.now(timezone.utc)
     failure_stage = "video_metadata_ingestion"
@@ -243,6 +253,7 @@ def main(video_id: str, max_pages: int, page_size: int):
         video_metadata_path = ingest_video_metadata(
             video_id=video_id,
             ingested_at=ingested_at,
+            raw_videos_dir=storage.raw_videos_dir,
         )
         logger.info(
             "video_metadata_complete video_id=%s output_path=%s",
@@ -255,11 +266,26 @@ def main(video_id: str, max_pages: int, page_size: int):
             max_pages=max_pages,
             page_size=page_size,
             ingested_at=ingested_at,
+            raw_comments_dir=storage.raw_comments_dir,
         )
         failure_stage = "raw_comment_read"
         raw_documents = read_raw_comment_pages(raw_output_paths)
         failure_stage = "transformation"
-        transformation_result = process_comment_pages(raw_documents)
+        transformation_result = process_comment_pages(
+            raw_documents,
+            silver_base_dir=storage.silver_comments_dir,
+            rejected_base_dir=storage.rejected_comments_dir,
+            mention_base_dir=storage.silver_mentions_dir,
+            topic_base_dir=storage.silver_topics_dir,
+            video_sov_base_dir=storage.gold_video_entity_sov_dir,
+            daily_sov_base_dir=storage.gold_daily_entity_sov_dir,
+            video_topic_metrics_base_dir=(
+                storage.gold_video_topic_metrics_dir
+            ),
+            daily_topic_metrics_base_dir=(
+                storage.gold_daily_topic_metrics_dir
+            ),
+        )
         logger.info(
             "transformation_complete video_id=%s records_parsed=%s "
             "valid_records=%s rejected_records=%s "
@@ -316,7 +342,10 @@ def main(video_id: str, max_pages: int, page_size: int):
             transformation_result=transformation_result,
         )
         failure_stage = "run_manifest_write"
-        run_manifest_path = write_run_manifest(run_manifest)
+        run_manifest_path = write_run_manifest(
+            run_manifest,
+            base_dir=storage.run_manifests_dir,
+        )
         logger.info(
             "run_manifest_complete video_id=%s output_path=%s",
             video_id,
@@ -347,7 +376,8 @@ def main(video_id: str, max_pages: int, page_size: int):
         )
         try:
             failed_manifest_path = write_run_manifest(
-                failed_run_manifest
+                failed_run_manifest,
+                base_dir=storage.run_manifests_dir,
             )
         except Exception as manifest_error:
             logger.error(
@@ -372,6 +402,7 @@ def main(video_id: str, max_pages: int, page_size: int):
             video_id,
             execution_time_seconds,
         )
+        return run_manifest_path
 
 
 def run_cli():
