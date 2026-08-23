@@ -5,7 +5,8 @@ from pathlib import Path
 from enrichment.entity_aliases import normalize_alias
 
 
-DEFAULT_TOPIC_KEYWORDS_PATH = Path("config/topic_keywords.json")
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_TOPIC_KEYWORDS_PATH = _PROJECT_ROOT / "config/topic_keywords.json"
 SUPPORTED_SCHEMA_VERSION = 1
 
 

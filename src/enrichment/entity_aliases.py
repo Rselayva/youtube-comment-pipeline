@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_ENTITY_ALIASES_PATH = Path("config/entity_aliases.json")
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ENTITY_ALIASES_PATH = _PROJECT_ROOT / "config/entity_aliases.json"
 SUPPORTED_SCHEMA_VERSION = 1
 
 

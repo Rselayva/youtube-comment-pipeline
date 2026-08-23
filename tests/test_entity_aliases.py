@@ -78,6 +78,17 @@ def test_load_nmxx_alias_dictionary():
     assert aliases.member_alias_to_id["智佑"] == "nmixx_jiwoo"
     assert aliases.member_alias_to_id["金智佑"] == "nmixx_jiwoo"
     assert aliases.member_alias_to_id["圭"] == "nmixx_kyujin"
+
+
+def test_default_alias_dictionary_does_not_depend_on_working_directory(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.chdir(tmp_path)
+
+    aliases = load_entity_alias_dictionary()
+
+    assert aliases.dictionary_version == "nmixx_v2"
     assert aliases.member_alias_to_id["圭珍"] == "nmixx_kyujin"
     assert aliases.member_alias_to_id["張圭珍"] == "nmixx_kyujin"
     assert aliases.members_by_id["nmixx_lily"].group_id == "nmixx"

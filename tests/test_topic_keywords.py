@@ -52,6 +52,17 @@ def test_load_topic_keyword_dictionary_has_only_initial_topic_ids():
     }
 
 
+def test_default_topic_dictionary_does_not_depend_on_working_directory(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.chdir(tmp_path)
+
+    topics = load_topic_keyword_dictionary()
+
+    assert topics.dictionary_version == "comment_topics_v1"
+
+
 def test_load_topic_dictionary_rejects_duplicate_topic_id(tmp_path):
     raw_dictionary = make_dictionary()
     raw_dictionary["topics"].append(raw_dictionary["topics"][0].copy())
