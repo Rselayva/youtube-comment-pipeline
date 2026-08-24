@@ -9,7 +9,7 @@ SELECT
     dictionary_version,
     COUNT(*) AS row_count,
     MAX(loaded_at) AS loaded_at
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_entity_sov_history`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_entity_sov_history
 WHERE video_id = :video_id
 GROUP BY
     video_id,
@@ -25,7 +25,7 @@ SELECT
     dictionary_version,
     COUNT(*),
     MAX(loaded_at)
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_entity_sov_history`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_entity_sov_history
 WHERE video_id = :video_id
 GROUP BY
     video_id,
@@ -41,7 +41,7 @@ SELECT
     dictionary_version,
     COUNT(*),
     MAX(loaded_at)
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_topic_metrics_history`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_topic_metrics_history
 WHERE video_id = :video_id
 GROUP BY
     video_id,
@@ -57,7 +57,7 @@ SELECT
     dictionary_version,
     COUNT(*),
     MAX(loaded_at)
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_topic_metrics_history`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_topic_metrics_history
 WHERE video_id = :video_id
 GROUP BY
     video_id,

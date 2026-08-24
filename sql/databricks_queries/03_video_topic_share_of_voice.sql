@@ -13,7 +13,7 @@ SELECT
     topic_share_of_voice,
     dictionary_version,
     snapshot_at
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_topic_metrics`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_topic_metrics
 WHERE video_id = :video_id
   AND dictionary_version = 'comment_topics_v1'
 ORDER BY

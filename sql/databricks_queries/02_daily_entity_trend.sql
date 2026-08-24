@@ -12,7 +12,7 @@ SELECT
     entity_share_of_voice,
     dictionary_version,
     snapshot_at
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_entity_sov`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_entity_sov
 WHERE video_id = :video_id
   AND dictionary_version = 'nmixx_v2'
   AND entity_type = 'member'

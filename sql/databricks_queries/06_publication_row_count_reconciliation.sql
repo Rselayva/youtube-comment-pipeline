@@ -7,7 +7,7 @@ WITH latest_publication AS (
         run_id,
         video_id,
         row_counts_json
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_load_publications`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_load_publications
     WHERE video_id = :video_id
     ORDER BY
         run_started_at DESC,
@@ -50,7 +50,7 @@ history_counts AS (
     SELECT
         'gold_video_entity_sov' AS table_name,
         COUNT(*) AS history_row_count
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_entity_sov_history`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_entity_sov_history
     WHERE video_id = :video_id
       AND load_run_id = (SELECT run_id FROM latest_publication)
 
@@ -59,7 +59,7 @@ history_counts AS (
     SELECT
         'gold_daily_entity_sov',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_entity_sov_history`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_entity_sov_history
     WHERE video_id = :video_id
       AND load_run_id = (SELECT run_id FROM latest_publication)
 
@@ -68,7 +68,7 @@ history_counts AS (
     SELECT
         'gold_video_topic_metrics',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_topic_metrics_history`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_topic_metrics_history
     WHERE video_id = :video_id
       AND load_run_id = (SELECT run_id FROM latest_publication)
 
@@ -77,7 +77,7 @@ history_counts AS (
     SELECT
         'gold_daily_topic_metrics',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_topic_metrics_history`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_topic_metrics_history
     WHERE video_id = :video_id
       AND load_run_id = (SELECT run_id FROM latest_publication)
 ),
@@ -85,7 +85,7 @@ current_counts AS (
     SELECT
         'gold_video_entity_sov' AS table_name,
         COUNT(*) AS current_row_count
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_entity_sov`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_entity_sov
     WHERE video_id = :video_id
 
     UNION ALL
@@ -93,7 +93,7 @@ current_counts AS (
     SELECT
         'gold_daily_entity_sov',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_entity_sov`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_entity_sov
     WHERE video_id = :video_id
 
     UNION ALL
@@ -101,7 +101,7 @@ current_counts AS (
     SELECT
         'gold_video_topic_metrics',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_video_topic_metrics`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_video_topic_metrics
     WHERE video_id = :video_id
 
     UNION ALL
@@ -109,7 +109,7 @@ current_counts AS (
     SELECT
         'gold_daily_topic_metrics',
         COUNT(*)
-    FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_daily_topic_metrics`
+    FROM rselayva_dev.youtube_comment_pipeline_dev.gold_daily_topic_metrics
     WHERE video_id = :video_id
 )
 SELECT

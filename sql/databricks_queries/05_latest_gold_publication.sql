@@ -13,7 +13,7 @@ SELECT
         row_counts_json,
         'MAP<STRING, BIGINT>'
     ) AS row_counts
-FROM `rselayva_dev`.`youtube_comment_pipeline_dev`.`gold_load_publications`
+FROM rselayva_dev.youtube_comment_pipeline_dev.gold_load_publications
 WHERE video_id = :video_id
 ORDER BY
     run_started_at DESC,
